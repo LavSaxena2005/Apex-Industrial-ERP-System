@@ -2,20 +2,54 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { StatusBadge } from '../components/StatusBadge';
-import { Modal } from '../components/Modal';
 import { TraceabilityBanner } from '../components/TraceabilityBanner';
 import {
-  ShoppingCart,
-  Lock,
-  Truck,
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
-  Eye,
-  Info,
-  Search,
-  Filter,
-} from 'lucide-react';
+  Box,
+  Paper,
+  Typography,
+  Button,
+  TextField,
+  InputAdornment,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  TableContainer,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Alert,
+  Grid,
+  Divider,
+  Tooltip,
+  IconButton,
+} from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
+import LockIcon from '@mui/icons-material/Lock';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import CancelIcon from '@mui/icons-material/Cancel';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import TimelineIcon from '@mui/icons-material/Timeline';
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+
+const StockReadiness = ({ status, isSufficient }) => {
+  if (status === 'PENDING') {
+    return isSufficient
+      ? <Chip label="Stock Available" size="small" sx={{ bgcolor: '#dcfce7', color: '#15803d', fontWeight: 700, height: 22, fontSize: '0.72rem' }} />
+      : <Chip label="Stock Shortage" size="small" sx={{ bgcolor: '#fee2e2', color: '#b91c1c', fontWeight: 700, height: 22, fontSize: '0.72rem' }} />;
+  }
+  if (status === 'CONFIRMED') return <Chip label="✓ Reserved" size="small" sx={{ bgcolor: '#dbeafe', color: '#1d4ed8', fontWeight: 700, height: 22, fontSize: '0.72rem' }} />;
+  if (status === 'DISPATCHED') return <Chip label="✓ Dispatched" size="small" sx={{ bgcolor: '#dcfce7', color: '#15803d', fontWeight: 700, height: 22, fontSize: '0.72rem' }} />;
+  return <Typography variant="caption" color="text.disabled">—</Typography>;
+};
 
 export const SalesOrders = () => {
   const { isAdmin } = useAuth();
@@ -25,28 +59,22 @@ export const SalesOrders = () => {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
 
-  // Modals & Details
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [dispatchModalOrder, setDispatchModalOrder] = useState(null);
   const [traceModalOrder, setTraceModalOrder] = useState(null);
   const [traceData, setTraceData] = useState(null);
 
-  // Dispatch Form
   const [vehicleNumber, setVehicleNumber] = useState('');
   const [driverName, setDriverName] = useState('');
   const [dispatchError, setDispatchError] = useState('');
   const [dispatching, setDispatching] = useState(false);
 
-  // Notification
   const [alertInfo, setAlertInfo] = useState(null);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [ordRes, invRes] = await Promise.all([
-        api.getSalesOrders(),
-        api.getInventory(),
-      ]);
+      const [ordRes, invRes] = await Promise.all([api.getSalesOrders(), api.getInventory()]);
       setOrders(ordRes.data || []);
       setInventory(invRes.data || []);
     } catch (err) {
@@ -56,24 +84,16 @@ export const SalesOrders = () => {
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const handleConfirmReservation = async (orderId) => {
     try {
       setAlertInfo(null);
-      const res = await api.confirmSalesOrder(orderId);
-      setAlertInfo({
-        type: 'success',
-        message: `Sales Order confirmed! Inventory reserved via PostgreSQL row locks (SELECT ... FOR UPDATE).`,
-      });
+      await api.confirmSalesOrder(orderId);
+      setAlertInfo({ type: 'success', message: 'Sales Order confirmed! Inventory reserved via PostgreSQL row locks.' });
       fetchData();
     } catch (err) {
-      setAlertInfo({
-        type: 'error',
-        message: err.message || 'Failed to reserve inventory for Sales Order.',
-      });
+      setAlertInfo({ type: 'error', message: err.message || 'Failed to reserve inventory.' });
     }
   };
 
@@ -88,37 +108,23 @@ export const SalesOrders = () => {
     e.preventDefault();
     setDispatchError('');
     setDispatching(true);
-
     try {
-      const res = await api.dispatchSalesOrder(dispatchModalOrder.id, {
-        vehicle_number: vehicleNumber,
-        driver_name: driverName,
-      });
-
+      const res = await api.dispatchSalesOrder(dispatchModalOrder.id, { vehicle_number: vehicleNumber, driver_name: driverName });
       setDispatchModalOrder(null);
-      setAlertInfo({
-        type: 'success',
-        message: `Order dispatched under ${res.data.dispatch?.dispatch_number}! Physical and reserved inventory decremented atomically.`,
-      });
+      setAlertInfo({ type: 'success', message: `Dispatched under ${res.data.dispatch?.dispatch_number}! Stock decremented atomically.` });
       fetchData();
     } catch (err) {
-      setDispatchError(err.message || 'Dispatch processing failed.');
+      setDispatchError(err.message || 'Dispatch failed.');
     } finally {
       setDispatching(false);
     }
   };
 
   const handleCancelOrder = async (orderId) => {
-    if (!window.confirm('Are you sure you want to cancel this Sales Order? Any reserved stock will be returned.')) {
-      return;
-    }
-
+    if (!window.confirm('Cancel this Sales Order? Any reserved stock will be released.')) return;
     try {
       await api.cancelSalesOrder(orderId);
-      setAlertInfo({
-        type: 'info',
-        message: 'Sales Order cancelled and any reserved stock released back to inventory.',
-      });
+      setAlertInfo({ type: 'info', message: 'Order cancelled and reserved stock released.' });
       fetchData();
     } catch (err) {
       setAlertInfo({ type: 'error', message: err.message || 'Failed to cancel order.' });
@@ -132,619 +138,366 @@ export const SalesOrders = () => {
       const res = await api.getTraceability('sales_order', order.id);
       setTraceData(res.data);
     } catch (err) {
-      console.error('Error fetching traceability:', err);
+      console.error('Traceability error:', err);
     }
   };
 
-  // Helper to verify item availability from local inventory cache
   const checkStockSufficiency = (order) => {
     if (order.status !== 'PENDING') return null;
-
-    let allAvailable = true;
     for (const it of order.items || []) {
-      const inv = inventory.find((invItem) => invItem.product_id === it.product_id);
-      if (!inv || inv.available_quantity < it.quantity) {
-        allAvailable = false;
-        break;
-      }
+      const inv = inventory.find((i) => i.product_id === it.product_id);
+      if (!inv || inv.available_quantity < it.quantity) return false;
     }
-    return allAvailable;
+    return true;
   };
 
-  const filteredOrders = orders.filter((o) => {
-    const matchesSearch =
+  const filtered = orders.filter((o) => {
+    const matchSearch =
       o.order_number.toLowerCase().includes(search.toLowerCase()) ||
       o.customer?.company_name.toLowerCase().includes(search.toLowerCase()) ||
       o.quotation?.quotation_number.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = filterStatus === 'ALL' || o.status === filterStatus;
-    return matchesSearch && matchesStatus;
+    return matchSearch && (filterStatus === 'ALL' || o.status === filterStatus);
   });
 
   return (
-    <div>
-      {/* Top Banner Traceability Preview */}
-      <TraceabilityBanner activeStage={4} metadata={{ orderNumber: 'SO-0001' }} />
+    <Box>
+      {/* Traceability Banner */}
+      <TraceabilityBanner activeStage={4} metadata={{ orderNumber: 'SO-xxxx' }} />
 
-      <div className="card">
-        <div className="card-header">
-          <div>
-            <h2 className="card-title">
-              <ShoppingCart size={22} color="var(--primary)" />
-              Sales Orders & Dispatch Execution
-            </h2>
-            <p className="card-desc">
-              Manage confirmed orders, trigger concurrency-safe stock reservation, and process dispatches.
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span
-              style={{
-                fontSize: '0.8rem',
-                color: isAdmin ? '#c084fc' : '#38bdf8',
-                background: 'var(--bg-subtle)',
-                padding: '6px 12px',
-                borderRadius: '6px',
-                fontWeight: 600,
-              }}
-            >
-              Role: {isAdmin ? 'ADMIN (Full Execution)' : 'SALES USER (Read-Only Orders)'}
-            </span>
-          </div>
-        </div>
-
-        {/* Dynamic Alert Banner */}
-        {alertInfo && (
-          <div
-            style={{
-              background:
-                alertInfo.type === 'success'
-                  ? 'var(--success-bg)'
-                  : alertInfo.type === 'error'
-                  ? 'var(--danger-bg)'
-                  : 'var(--info-bg)',
-              border: `1px solid ${
-                alertInfo.type === 'success'
-                  ? 'var(--success-border)'
-                  : alertInfo.type === 'error'
-                  ? 'var(--danger-border)'
-                  : 'var(--info-border)'
-              }`,
-              borderRadius: '8px',
-              padding: '14px 18px',
-              color:
-                alertInfo.type === 'success'
-                  ? '#34d399'
-                  : alertInfo.type === 'error'
-                  ? '#f87171'
-                  : '#38bdf8',
-              fontSize: '0.9rem',
-              marginBottom: '20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              {alertInfo.type === 'success' && <CheckCircle2 size={18} />}
-              {alertInfo.type === 'error' && <AlertTriangle size={18} />}
-              {alertInfo.type === 'info' && <Info size={18} />}
-              <span>{alertInfo.message}</span>
-            </div>
-            <button
-              onClick={() => setAlertInfo(null)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'inherit',
-                cursor: 'pointer',
-              }}
-            >
-              ×
-            </button>
-          </div>
-        )}
-
-        {/* Filters Bar */}
-        <div
-          style={{
-            display: 'flex',
-            gap: '12px',
-            marginBottom: '20px',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-          }}
+      {/* Alert */}
+      {alertInfo && (
+        <Alert
+          severity={alertInfo.type}
+          onClose={() => setAlertInfo(null)}
+          sx={{ mb: 2, borderRadius: 2 }}
         >
-          <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
-            <Search
-              size={16}
-              style={{
-                position: 'absolute',
-                left: '12px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                color: 'var(--text-dim)',
-              }}
-            />
-            <input
-              type="text"
-              className="form-input"
-              placeholder="Search by order #, customer, quotation..."
-              style={{ paddingLeft: '36px' }}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
+          {alertInfo.message}
+        </Alert>
+      )}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Filter size={16} color="var(--text-dim)" />
-            <select
-              className="form-select"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              style={{ width: '160px' }}
-            >
-              <option value="ALL">All Statuses</option>
-              <option value="PENDING">PENDING</option>
-              <option value="CONFIRMED">CONFIRMED (Reserved)</option>
-              <option value="DISPATCHED">DISPATCHED</option>
-              <option value="CANCELLED">CANCELLED</option>
-            </select>
-          </div>
-        </div>
+      <Paper variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden', bgcolor: '#fff' }}>
+        {/* Header */}
+        <Box sx={{ px: 3, py: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+          <Box>
+            <Typography variant="h6" fontWeight={700}>Sales Orders &amp; Dispatch</Typography>
+            <Typography variant="caption" color="text.secondary">
+              Confirm orders, reserve stock, and process dispatches
+            </Typography>
+          </Box>
+          <Chip
+            label={`Role: ${isAdmin ? 'Admin — Full Access' : 'Sales — Read Only'}`}
+            size="small"
+            sx={{
+              bgcolor: isAdmin ? '#ede9fe' : '#e0f2fe',
+              color: isAdmin ? '#6d28d9' : '#0369a1',
+              fontWeight: 700,
+              fontSize: '0.78rem',
+            }}
+          />
+        </Box>
 
-        {/* Orders Table */}
+        {/* Filters */}
+        <Box sx={{ px: 3, py: 2, display: 'flex', gap: 2, flexWrap: 'wrap', borderBottom: '1px solid', borderColor: 'divider' }}>
+          <TextField
+            size="small"
+            placeholder="Search by order #, customer, or quotation…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" sx={{ color: 'text.secondary' }} /></InputAdornment> }}
+            sx={{ flex: 1, minWidth: 260 }}
+          />
+          <FormControl size="small" sx={{ minWidth: 180 }}>
+            <InputLabel>Status</InputLabel>
+            <Select label="Status" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+              <MenuItem value="ALL">All Statuses</MenuItem>
+              <MenuItem value="PENDING">Pending</MenuItem>
+              <MenuItem value="CONFIRMED">Confirmed (Reserved)</MenuItem>
+              <MenuItem value="DISPATCHED">Dispatched</MenuItem>
+              <MenuItem value="CANCELLED">Cancelled</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+
+        {/* Table */}
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-            Loading sales orders...
-          </div>
-        ) : filteredOrders.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-dim)' }}>
-            No sales orders found matching your criteria.
-          </div>
+          <Box sx={{ py: 6, display: 'flex', justifyContent: 'center' }}><CircularProgress size={32} /></Box>
+        ) : filtered.length === 0 ? (
+          <Box sx={{ py: 6, textAlign: 'center' }}>
+            <ShoppingCartIcon sx={{ fontSize: 40, color: 'text.disabled', mb: 1 }} />
+            <Typography color="text.secondary">No sales orders found.</Typography>
+          </Box>
         ) : (
-          <div className="table-container">
-            <table className="erp-table">
-              <thead>
-                <tr>
-                  <th>Order #</th>
-                  <th>Customer</th>
-                  <th>Quotation Ref</th>
-                  <th>Order Date</th>
-                  <th>Total Amount</th>
-                  <th>Status</th>
-                  <th>Stock Readiness</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredOrders.map((ord) => {
-                  const isStockSufficient = checkStockSufficiency(ord);
-
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Order #</TableCell>
+                  <TableCell>Customer</TableCell>
+                  <TableCell>Quotation Ref</TableCell>
+                  <TableCell>Order Date</TableCell>
+                  <TableCell align="right">Total Amount</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Stock</TableCell>
+                  <TableCell align="right">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filtered.map((ord) => {
+                  const isSufficient = checkStockSufficiency(ord);
                   return (
-                    <tr key={ord.id}>
-                      <td className="font-mono" style={{ fontWeight: 700, color: 'var(--primary)' }}>
-                        {ord.order_number}
-                      </td>
-                      <td>
-                        <div style={{ fontWeight: 600 }}>{ord.customer?.company_name}</div>
-                      </td>
-                      <td className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--text-dim)' }}>
-                        {ord.quotation?.quotation_number}
-                      </td>
-                      <td className="font-mono">
-                        {new Date(ord.order_date).toLocaleDateString()}
-                      </td>
-                      <td className="font-mono" style={{ fontWeight: 700 }}>
-                        ₹{Number(ord.total_amount).toLocaleString('en-IN')}
-                      </td>
-                      <td>
-                        <StatusBadge status={ord.status} />
-                      </td>
-                      <td>
-                        {ord.status === 'PENDING' ? (
-                          isStockSufficient ? (
-                            <span className="stock-badge-green" style={{ fontSize: '0.75rem' }}>
-                              ● Stock Available
-                            </span>
-                          ) : (
-                            <span className="stock-badge-red" style={{ fontSize: '0.75rem' }}>
-                              ▲ Stock Shortage
-                            </span>
-                          )
-                        ) : ord.status === 'CONFIRMED' ? (
-                          <span
-                            style={{
-                              color: '#60a5fa',
-                              fontSize: '0.75rem',
-                              fontWeight: 600,
-                              fontFamily: 'var(--font-mono)',
-                            }}
-                          >
-                            ✓ Stock Reserved
-                          </span>
-                        ) : ord.status === 'DISPATCHED' ? (
-                          <span
-                            style={{
-                              color: '#34d399',
-                              fontSize: '0.75rem',
-                              fontWeight: 600,
-                              fontFamily: 'var(--font-mono)',
-                            }}
-                          >
-                            ✓ Delivered / Dispatched
-                          </span>
-                        ) : (
-                          <span style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>—</span>
-                        )}
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <div style={{ display: 'inline-flex', gap: '6px' }}>
-                          <button
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => setSelectedOrder(ord)}
-                            title="View Items"
-                          >
-                            <Eye size={13} />
-                            Items
-                          </button>
-
-                          <button
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => handleOpenTraceability(ord)}
-                            title="Audit Traceability Trail"
-                          >
-                            Audit
-                          </button>
-
-                          {/* ADMIN: Confirm Order (Stock Reservation) */}
+                    <TableRow key={ord.id}>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={700} color="primary.main" fontFamily="monospace">{ord.order_number}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={600}>{ord.customer?.company_name}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="caption" color="text.secondary" fontFamily="monospace">{ord.quotation?.quotation_number}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" fontFamily="monospace">{new Date(ord.order_date).toLocaleDateString()}</Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Typography variant="body2" fontWeight={700} fontFamily="monospace">₹{Number(ord.total_amount).toLocaleString('en-IN')}</Typography>
+                      </TableCell>
+                      <TableCell><StatusBadge status={ord.status} /></TableCell>
+                      <TableCell><StockReadiness status={ord.status} isSufficient={isSufficient} /></TableCell>
+                      <TableCell align="right">
+                        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
+                          <Tooltip title="View Items">
+                            <IconButton size="small" onClick={() => setSelectedOrder(ord)}>
+                              <VisibilityIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Audit Trail">
+                            <IconButton size="small" onClick={() => handleOpenTraceability(ord)}>
+                              <TimelineIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
                           {ord.status === 'PENDING' && (
-                            <button
-                              id={`btn-confirm-${ord.id}`}
-                              disabled={!isAdmin}
-                              className="btn btn-primary btn-sm"
-                              onClick={() => handleConfirmReservation(ord.id)}
-                              title={
-                                isAdmin
-                                  ? 'Confirm Order & Reserve Stock (SELECT ... FOR UPDATE)'
-                                  : 'Requires ADMIN role'
-                              }
-                            >
-                              <Lock size={13} />
-                              Confirm & Reserve
-                            </button>
+                            <Tooltip title={isAdmin ? 'Confirm & Reserve Stock' : 'Requires Admin role'}>
+                              <span>
+                                <Button
+                                  id={`btn-confirm-${ord.id}`}
+                                  size="small"
+                                  variant="contained"
+                                  startIcon={<LockIcon fontSize="small" />}
+                                  disabled={!isAdmin}
+                                  onClick={() => handleConfirmReservation(ord.id)}
+                                  sx={{ fontSize: '0.75rem' }}
+                                >
+                                  Confirm
+                                </Button>
+                              </span>
+                            </Tooltip>
                           )}
-
-                          {/* ADMIN: Dispatch Order */}
                           {ord.status === 'CONFIRMED' && (
-                            <button
-                              id={`btn-dispatch-${ord.id}`}
-                              disabled={!isAdmin}
-                              className="btn btn-success btn-sm"
-                              onClick={() => handleOpenDispatch(ord)}
-                              title={isAdmin ? 'Process Dispatch' : 'Requires ADMIN role'}
-                            >
-                              <Truck size={13} />
-                              Dispatch
-                            </button>
+                            <Tooltip title={isAdmin ? 'Process Dispatch' : 'Requires Admin role'}>
+                              <span>
+                                <Button
+                                  id={`btn-dispatch-${ord.id}`}
+                                  size="small"
+                                  variant="contained"
+                                  color="primary"
+                                  startIcon={<LocalShippingIcon fontSize="small" />}
+                                  disabled={!isAdmin}
+                                  onClick={() => handleOpenDispatch(ord)}
+                                  sx={{ fontSize: '0.75rem' }}
+                                >
+                                  Dispatch
+                                </Button>
+                              </span>
+                            </Tooltip>
                           )}
-
-                          {/* ADMIN: Cancel Order */}
                           {(ord.status === 'PENDING' || ord.status === 'CONFIRMED') && (
-                            <button
-                              disabled={!isAdmin}
-                              className="btn btn-secondary btn-sm"
-                              style={{ color: '#f87171' }}
-                              onClick={() => handleCancelOrder(ord.id)}
-                              title={isAdmin ? 'Cancel Order & Release Stock' : 'Requires ADMIN role'}
-                            >
-                              <XCircle size={13} />
-                            </button>
+                            <Tooltip title={isAdmin ? 'Cancel Order' : 'Requires Admin role'}>
+                              <span>
+                                <IconButton size="small" color="error" disabled={!isAdmin} onClick={() => handleCancelOrder(ord.id)}>
+                                  <CancelIcon fontSize="small" />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
                           )}
-                        </div>
-                      </td>
-                    </tr>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
-      </div>
+      </Paper>
 
-      {/* ORDER ITEMS DETAIL MODAL */}
-      <Modal
-        isOpen={!!selectedOrder}
-        onClose={() => setSelectedOrder(null)}
-        title={`Sales Order Line Items: ${selectedOrder?.order_number}`}
-        maxWidth="740px"
-      >
-        {selectedOrder && (
-          <div>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '16px',
-                background: 'var(--bg-subtle)',
-                padding: '16px',
-                borderRadius: '8px',
-                marginBottom: '20px',
-              }}
-            >
-              <div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>CUSTOMER</div>
-                <div style={{ fontWeight: 700 }}>{selectedOrder.customer?.company_name}</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  Quotation: {selectedOrder.quotation?.quotation_number}
-                </div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>ORDER STATUS</div>
-                <div style={{ marginTop: '4px' }}>
-                  <StatusBadge status={selectedOrder.status} />
-                </div>
-                <div className="font-mono" style={{ fontSize: '1rem', fontWeight: 800, marginTop: '6px' }}>
-                  ₹{Number(selectedOrder.total_amount).toLocaleString('en-IN')}
-                </div>
-              </div>
-            </div>
+      {/* ORDER ITEMS DIALOG */}
+      <Dialog open={!!selectedOrder} onClose={() => setSelectedOrder(null)} maxWidth="md" fullWidth>
+        <DialogTitle>Order Items — {selectedOrder?.order_number}</DialogTitle>
+        <Divider />
+        <DialogContent>
+          {selectedOrder && (
+            <Box>
+              <Grid container spacing={2} sx={{ mb: 2 }}>
+                <Grid item xs={12} sm={6}>
+                  <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                    <Typography variant="caption" color="text.secondary" textTransform="uppercase" letterSpacing="0.06em" fontWeight={700}>Customer</Typography>
+                    <Typography variant="subtitle1" fontWeight={700} mt={0.5}>{selectedOrder.customer?.company_name}</Typography>
+                    <Typography variant="caption" color="text.secondary">Quotation: {selectedOrder.quotation?.quotation_number}</Typography>
+                  </Paper>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                    <Typography variant="caption" color="text.secondary" textTransform="uppercase" letterSpacing="0.06em" fontWeight={700}>Status &amp; Amount</Typography>
+                    <Box mt={0.5} mb={0.5}><StatusBadge status={selectedOrder.status} /></Box>
+                    <Typography variant="subtitle2" fontWeight={800} fontFamily="monospace">₹{Number(selectedOrder.total_amount).toLocaleString('en-IN')}</Typography>
+                  </Paper>
+                </Grid>
+              </Grid>
 
-            <h4 style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '10px' }}>
-              Products & Stock Status
-            </h4>
+              <Typography variant="subtitle2" fontWeight={700} mb={1}>Products &amp; Stock Status</Typography>
+              <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, mb: 2 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Product Code</TableCell>
+                      <TableCell>Product Name</TableCell>
+                      <TableCell align="right">Qty</TableCell>
+                      <TableCell align="right">Unit Price</TableCell>
+                      <TableCell>Live Stock</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {selectedOrder.items?.map((it) => {
+                      const inv = inventory.find((i) => i.product_id === it.product_id);
+                      const avail = inv ? inv.available_quantity : 0;
+                      const isEnough = avail >= it.quantity;
+                      return (
+                        <TableRow key={it.id}>
+                          <TableCell><Typography variant="body2" fontWeight={700} color="primary.main" fontFamily="monospace">{it.product?.product_code}</Typography></TableCell>
+                          <TableCell><Typography variant="body2">{it.product?.product_name}</Typography></TableCell>
+                          <TableCell align="right"><Typography variant="body2" fontWeight={700} fontFamily="monospace">{it.quantity} {it.product?.unit}</Typography></TableCell>
+                          <TableCell align="right"><Typography variant="body2" fontFamily="monospace">₹{Number(it.unit_price).toLocaleString('en-IN')}</Typography></TableCell>
+                          <TableCell>
+                            {selectedOrder.status === 'PENDING' ? (
+                              <Chip
+                                label={`${avail} units`}
+                                size="small"
+                                sx={{
+                                  bgcolor: isEnough ? '#dcfce7' : '#fee2e2',
+                                  color: isEnough ? '#15803d' : '#b91c1c',
+                                  fontWeight: 700, height: 22, fontSize: '0.72rem',
+                                }}
+                              />
+                            ) : (
+                              <Typography variant="caption" color="text.secondary">Reserved</Typography>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
 
-            <div className="table-container" style={{ marginBottom: '20px' }}>
-              <table className="erp-table">
-                <thead>
-                  <tr>
-                    <th>Product Code</th>
-                    <th>Product Name</th>
-                    <th>Ordered Qty</th>
-                    <th>Unit Price</th>
-                    <th>Live Available Stock</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedOrder.items?.map((it) => {
-                    const inv = inventory.find((i) => i.product_id === it.product_id);
-                    const avail = inv ? inv.available_quantity : 0;
-                    const isEnough = avail >= it.quantity;
+              {selectedOrder.dispatches?.length > 0 && (
+                <Alert severity="success" icon={<LocalShippingIcon />} sx={{ borderRadius: 2 }}>
+                  {selectedOrder.dispatches.map((d) => (
+                    <Typography key={d.id} variant="body2">
+                      <strong>{d.dispatch_number}</strong> — {new Date(d.dispatch_date).toLocaleDateString()} | Vehicle: <strong>{d.vehicle_number}</strong> | Driver: <strong>{d.driver_name}</strong>
+                    </Typography>
+                  ))}
+                </Alert>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <Divider />
+        <DialogActions>
+          <Button variant="outlined" onClick={() => setSelectedOrder(null)}>Close</Button>
+        </DialogActions>
+      </Dialog>
 
-                    return (
-                      <tr key={it.id}>
-                        <td className="font-mono" style={{ fontWeight: 600, color: 'var(--primary)' }}>
-                          {it.product?.product_code}
-                        </td>
-                        <td>{it.product?.product_name}</td>
-                        <td className="font-mono" style={{ fontWeight: 700 }}>
-                          {it.quantity} {it.product?.unit}
-                        </td>
-                        <td className="font-mono">₹{Number(it.unit_price).toLocaleString('en-IN')}</td>
-                        <td>
-                          {selectedOrder.status === 'PENDING' ? (
-                            <span
-                              className={isEnough ? 'stock-badge-green' : 'stock-badge-red'}
-                              style={{ fontSize: '0.78rem' }}
-                            >
-                              {avail} units available
-                            </span>
-                          ) : (
-                            <span style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>
-                              Reserved for Order
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Dispatches History */}
-            {selectedOrder.dispatches && selectedOrder.dispatches.length > 0 && (
-              <div
-                style={{
-                  background: '#0d1424',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: '8px',
-                  padding: '16px',
-                  marginBottom: '20px',
-                }}
-              >
-                <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#34d399', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Truck size={16} /> Dispatch Confirmation Log
-                </div>
-                {selectedOrder.dispatches.map((d) => (
-                  <div key={d.id} style={{ fontSize: '0.85rem' }}>
-                    <span className="font-mono" style={{ fontWeight: 700, color: 'var(--primary)' }}>
-                      {d.dispatch_number}
-                    </span>{' '}
-                    dispatched on {new Date(d.dispatch_date).toLocaleDateString()} | Vehicle:{' '}
-                    <strong>{d.vehicle_number}</strong> | Driver: <strong>{d.driver_name}</strong>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="modal-footer" style={{ margin: '-24px', marginTop: '16px' }}>
-              <button className="btn btn-secondary" onClick={() => setSelectedOrder(null)}>
-                Close
-              </button>
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      {/* DISPATCH PROCESSING MODAL */}
-      <Modal
-        isOpen={!!dispatchModalOrder}
-        onClose={() => setDispatchModalOrder(null)}
-        title={`Process Dispatch: ${dispatchModalOrder?.order_number}`}
-        maxWidth="540px"
-      >
-        {dispatchError && (
-          <div
-            style={{
-              background: 'rgba(239, 68, 68, 0.15)',
-              border: '1px solid rgba(239, 68, 68, 0.4)',
-              borderRadius: '6px',
-              padding: '10px 14px',
-              color: '#f87171',
-              fontSize: '0.85rem',
-              marginBottom: '16px',
-            }}
-          >
-            {dispatchError}
-          </div>
-        )}
-
+      {/* DISPATCH DIALOG */}
+      <Dialog open={!!dispatchModalOrder} onClose={() => setDispatchModalOrder(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>Process Dispatch — {dispatchModalOrder?.order_number}</DialogTitle>
+        <Divider />
         <form onSubmit={handleProcessDispatch}>
-          <div
-            style={{
-              background: 'var(--bg-subtle)',
-              border: '1px solid var(--border-color)',
-              borderRadius: '8px',
-              padding: '14px',
-              marginBottom: '18px',
-              fontSize: '0.85rem',
-            }}
-          >
-            <div style={{ fontWeight: 600 }}>Destination: {dispatchModalOrder?.customer?.company_name}</div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-              City: {dispatchModalOrder?.customer?.city}
-            </div>
-            <div style={{ color: '#38bdf8', fontSize: '0.8rem', marginTop: '6px' }}>
-              Total Products: {dispatchModalOrder?.items?.length} | Physical & Reserved stock will decrement automatically.
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">
-              Logistics Vehicle Number <span style={{ color: '#ef4444' }}>*</span>
-            </label>
-            <input
-              required
-              className="form-input"
-              placeholder="e.g. MH-12-AB-1234"
-              value={vehicleNumber}
-              onChange={(e) => setVehicleNumber(e.target.value)}
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">
-              Assigned Driver Name <span style={{ color: '#ef4444' }}>*</span>
-            </label>
-            <input
-              required
-              className="form-input"
-              placeholder="e.g. Ramesh Patil"
-              value={driverName}
-              onChange={(e) => setDriverName(e.target.value)}
-            />
-          </div>
-
-          <div className="modal-footer" style={{ margin: '-24px', marginTop: '24px' }}>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => setDispatchModalOrder(null)}
-            >
-              Cancel
-            </button>
-            <button
-              id="btn-confirm-dispatch"
-              type="submit"
-              disabled={dispatching}
-              className="btn btn-success"
-            >
-              <Truck size={16} />
-              {dispatching ? 'Processing Dispatch...' : 'Confirm Dispatch & Deduct Stock'}
-            </button>
-          </div>
+          <DialogContent>
+            {dispatchError && <Alert severity="error" sx={{ mb: 2 }}>{dispatchError}</Alert>}
+            <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
+              <Typography variant="body2" fontWeight={600}>{dispatchModalOrder?.customer?.company_name}</Typography>
+              <Typography variant="caption">{dispatchModalOrder?.items?.length} products · Physical &amp; reserved stock will decrement atomically.</Typography>
+            </Alert>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <TextField label="Vehicle Number *" required fullWidth size="small" placeholder="e.g. MH-12-AB-1234" value={vehicleNumber} onChange={(e) => setVehicleNumber(e.target.value)} />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField label="Driver Name *" required fullWidth size="small" placeholder="e.g. Rajesh Patil" value={driverName} onChange={(e) => setDriverName(e.target.value)} />
+              </Grid>
+            </Grid>
+          </DialogContent>
+          <Divider />
+          <DialogActions>
+            <Button variant="outlined" onClick={() => setDispatchModalOrder(null)}>Cancel</Button>
+            <Button id="btn-confirm-dispatch" type="submit" variant="contained" color="primary" disabled={dispatching} startIcon={<LocalShippingIcon />}>
+              {dispatching ? <CircularProgress size={18} color="inherit" /> : 'Confirm Dispatch'}
+            </Button>
+          </DialogActions>
         </form>
-      </Modal>
+      </Dialog>
 
-      {/* FULL TRACEABILITY AUDIT MODAL */}
-      <Modal
-        isOpen={!!traceModalOrder}
-        onClose={() => setTraceModalOrder(null)}
-        title={`Audit Trail: ${traceModalOrder?.order_number}`}
-        maxWidth="740px"
-      >
-        {traceData ? (
-          <div>
-            <div style={{ marginBottom: '20px' }}>
-              <TraceabilityBanner
-                activeStage={
-                  traceData.dispatches?.length > 0
-                    ? 6
-                    : traceData.salesOrder?.status === 'CONFIRMED'
-                    ? 5
-                    : 4
-                }
-                metadata={{
-                  customerName: traceData.customer?.company_name,
-                  enquiryNumber: traceData.enquiry?.enquiry_number,
-                  quotationNumber: traceData.quotation?.quotation_number,
-                  orderNumber: traceData.salesOrder?.order_number,
-                  reservedStatus:
-                    traceData.salesOrder?.status === 'CONFIRMED' || traceData.salesOrder?.status === 'DISPATCHED'
-                      ? 'Reserved'
-                      : 'Pending',
-                  dispatchNumber: traceData.dispatches?.[0]?.dispatch_number,
-                }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {traceData.steps?.map((st) => (
-                <div
-                  key={st.step}
-                  style={{
-                    background: 'var(--bg-subtle)',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: '8px',
-                    padding: '14px 18px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
+      {/* TRACEABILITY AUDIT DIALOG */}
+      <Dialog open={!!traceModalOrder} onClose={() => setTraceModalOrder(null)} maxWidth="md" fullWidth>
+        <DialogTitle>Audit Trail — {traceModalOrder?.order_number}</DialogTitle>
+        <Divider />
+        <DialogContent>
+          {traceData ? (
+            <Box>
+              <Box sx={{ mb: 2 }}>
+                <TraceabilityBanner
+                  activeStage={
+                    traceData.dispatches?.length > 0 ? 6
+                      : traceData.salesOrder?.status === 'CONFIRMED' ? 5 : 4
+                  }
+                  metadata={{
+                    customerName: traceData.customer?.company_name,
+                    enquiryNumber: traceData.enquiry?.enquiry_number,
+                    quotationNumber: traceData.quotation?.quotation_number,
+                    orderNumber: traceData.salesOrder?.order_number,
+                    reservedStatus: ['CONFIRMED', 'DISPATCHED'].includes(traceData.salesOrder?.status) ? 'Reserved' : 'Pending',
+                    dispatchNumber: traceData.dispatches?.[0]?.dispatch_number,
                   }}
-                >
-                  <div>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>
-                      Step {st.step}
-                    </span>
-                    <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{st.title}</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      {st.data ? JSON.stringify(st.data) : 'Not initiated'}
-                    </div>
-                  </div>
-                  <div>
-                    {st.completed ? (
-                      <span className="badge badge-won">Completed</span>
-                    ) : (
-                      <span className="badge badge-draft">Pending</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="modal-footer" style={{ margin: '-24px', marginTop: '24px' }}>
-              <button className="btn btn-secondary" onClick={() => setTraceModalOrder(null)}>
-                Close
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
-            Loading audit lineage...
-          </div>
-        )}
-      </Modal>
-    </div>
+                />
+              </Box>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                {traceData.steps?.map((st) => (
+                  <Paper
+                    key={st.step}
+                    variant="outlined"
+                    sx={{ p: 2, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                  >
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" textTransform="uppercase" letterSpacing="0.06em">Step {st.step}</Typography>
+                      <Typography variant="subtitle2" fontWeight={700}>{st.title}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {st.data ? JSON.stringify(st.data) : 'Not initiated'}
+                      </Typography>
+                    </Box>
+                    <StatusBadge status={st.completed ? 'CONFIRMED' : 'PENDING'} />
+                  </Paper>
+                ))}
+              </Box>
+            </Box>
+          ) : (
+            <Box sx={{ py: 4, display: 'flex', justifyContent: 'center' }}><CircularProgress size={32} /></Box>
+          )}
+        </DialogContent>
+        <Divider />
+        <DialogActions>
+          <Button variant="outlined" onClick={() => setTraceModalOrder(null)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 };

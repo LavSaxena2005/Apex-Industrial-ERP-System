@@ -1,104 +1,130 @@
 import React from 'react';
 import {
-  Users,
-  HelpCircle,
-  FileSpreadsheet,
-  ShoppingCart,
-  Lock,
-  Truck,
-  CheckCircle2,
-} from 'lucide-react';
+  Paper,
+  Stepper,
+  Step,
+  StepLabel,
+  Typography,
+  Box,
+} from '@mui/material';
+import { styled } from '@mui/material/styles';
+import StepConnector, { stepConnectorClasses } from '@mui/material/StepConnector';
+import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import DescriptionIcon from '@mui/icons-material/Description';
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import LockIcon from '@mui/icons-material/Lock';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 
-const STEP_ICONS = [
-  Users,
-  HelpCircle,
-  FileSpreadsheet,
-  ShoppingCart,
-  Lock,
-  Truck,
+const STEPS = [
+  { title: 'Customer',          icon: PeopleAltIcon },
+  { title: 'Enquiry',           icon: HelpOutlineIcon },
+  { title: 'Quotation',         icon: DescriptionIcon },
+  { title: 'Sales Order',       icon: ShoppingCartIcon },
+  { title: 'Stock Reservation', icon: LockIcon },
+  { title: 'Dispatch',          icon: LocalShippingIcon },
 ];
 
+const ColorConnector = styled(StepConnector)(({ theme }) => ({
+  [`&.${stepConnectorClasses.alternativeLabel}`]: { top: 18 },
+  [`&.${stepConnectorClasses.active}`]: {
+    [`& .${stepConnectorClasses.line}`]: { borderColor: theme.palette.primary.main },
+  },
+  [`&.${stepConnectorClasses.completed}`]: {
+    [`& .${stepConnectorClasses.line}`]: { borderColor: theme.palette.success.main },
+  },
+  [`& .${stepConnectorClasses.line}`]: {
+    borderColor: '#e5e7eb',
+    borderTopWidth: 2,
+  },
+}));
+
+const ColorStepIconRoot = styled('div')(({ theme, ownerState }) => ({
+  width: 36,
+  height: 36,
+  borderRadius: '50%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: 16,
+  border: '2px solid',
+  borderColor: ownerState.completed
+    ? theme.palette.success.main
+    : ownerState.active
+    ? theme.palette.primary.main
+    : '#d1d5db',
+  backgroundColor: ownerState.completed
+    ? theme.palette.success.main
+    : ownerState.active
+    ? '#eff6ff'
+    : '#f9fafb',
+  color: ownerState.completed
+    ? '#ffffff'
+    : ownerState.active
+    ? theme.palette.primary.main
+    : '#9ca3af',
+  transition: 'all 0.2s ease',
+}));
+
+function ColorStepIcon({ active, completed, icon }) {
+  const Icon = STEPS[Number(icon) - 1]?.icon || PeopleAltIcon;
+  return (
+    <ColorStepIconRoot ownerState={{ active, completed }}>
+      <Icon fontSize="small" />
+    </ColorStepIconRoot>
+  );
+}
+
 export const TraceabilityBanner = ({ activeStage = 1, metadata = {} }) => {
-  const steps = [
-    {
-      num: 1,
-      title: 'Customer',
-      sub: metadata.customerName || 'ABC Engineering',
-    },
-    {
-      num: 2,
-      title: 'Enquiry',
-      sub: metadata.enquiryNumber || 'ENQ-0001',
-    },
-    {
-      num: 3,
-      title: 'Quotation',
-      sub: metadata.quotationNumber || 'QUO-0001',
-    },
-    {
-      num: 4,
-      title: 'Sales Order',
-      sub: metadata.orderNumber || 'SO-0001',
-    },
-    {
-      num: 5,
-      title: 'Stock Reservation',
-      sub: metadata.reservedStatus || (activeStage >= 5 ? 'Reserved' : 'Pending'),
-    },
-    {
-      num: 6,
-      title: 'Dispatch',
-      sub: metadata.dispatchNumber || (activeStage >= 6 ? 'Dispatched' : 'Pending'),
-    },
+  const subLabels = [
+    metadata.customerName || '—',
+    metadata.enquiryNumber || '—',
+    metadata.quotationNumber || '—',
+    metadata.orderNumber || '—',
+    metadata.reservedStatus || (activeStage >= 5 ? 'Reserved' : '—'),
+    metadata.dispatchNumber || (activeStage >= 6 ? 'Dispatched' : '—'),
   ];
 
   return (
-    <div className="stepper-container">
-      <div className="stepper-title">
-        <CheckCircle2 size={16} color="var(--primary)" />
-        Industrial ERP Traceability Lifecycle
-      </div>
-      <div className="stepper-track">
-        <div
-          className="stepper-line"
-          style={{
-            background: `linear-gradient(to right, #10b981 ${Math.min(
-              100,
-              ((activeStage - 1) / 5) * 100
-            )}%, #1e293b ${Math.min(100, ((activeStage - 1) / 5) * 100)}%)`,
-          }}
-        />
-        {steps.map((s, idx) => {
-          const Icon = STEP_ICONS[idx];
-          const isCompleted = s.num < activeStage;
-          const isActive = s.num === activeStage;
-
-          return (
-            <div key={s.num} className="stepper-step">
-              <div
-                className={`stepper-circle ${
-                  isCompleted ? 'completed' : isActive ? 'active' : ''
-                }`}
-              >
-                {isCompleted ? <CheckCircle2 size={18} /> : <Icon size={16} />}
-              </div>
-              <div
-                className="stepper-label"
-                style={{
-                  color: isActive
-                    ? 'var(--primary)'
-                    : isCompleted
-                    ? 'var(--text-main)'
-                    : 'var(--text-dim)',
-                }}
-              >
-                {s.title}
-              </div>
-              <div className="stepper-sub">{s.sub}</div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+    <Paper
+      variant="outlined"
+      sx={{ px: 3, py: 2, mb: 3, borderRadius: 2, bgcolor: '#ffffff' }}
+    >
+      <Typography
+        variant="caption"
+        sx={{
+          display: 'block',
+          fontWeight: 700,
+          color: 'text.secondary',
+          textTransform: 'uppercase',
+          letterSpacing: '0.07em',
+          mb: 2,
+        }}
+      >
+        ERP Traceability Pipeline
+      </Typography>
+      <Stepper
+        alternativeLabel
+        activeStep={activeStage - 1}
+        connector={<ColorConnector />}
+      >
+        {STEPS.map((step, idx) => (
+          <Step key={step.title}>
+            <StepLabel
+              StepIconComponent={ColorStepIcon}
+              optional={
+                <Typography variant="caption" color="text.secondary" noWrap>
+                  {subLabels[idx]}
+                </Typography>
+              }
+            >
+              <Typography variant="caption" fontWeight={600} noWrap>
+                {step.title}
+              </Typography>
+            </StepLabel>
+          </Step>
+        ))}
+      </Stepper>
+    </Paper>
   );
 };

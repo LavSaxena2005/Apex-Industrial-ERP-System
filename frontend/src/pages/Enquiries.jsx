@@ -1,18 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { StatusBadge } from '../components/StatusBadge';
-import { Modal } from '../components/Modal';
 import {
-  FileQuestion,
-  Plus,
-  Trash2,
-  Building2,
-  Calendar,
-  Layers,
-  ArrowUpRight,
-  Search,
-  Filter,
-} from 'lucide-react';
+  Box,
+  Paper,
+  Typography,
+  Button,
+  TextField,
+  InputAdornment,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  TableContainer,
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Alert,
+  Grid,
+  Divider,
+  IconButton,
+  Chip,
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import SearchIcon from '@mui/icons-material/Search';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
 
 export const Enquiries = ({ onNavigateToQuotation }) => {
   const [enquiries, setEnquiries] = useState([]);
@@ -22,12 +44,10 @@ export const Enquiries = ({ onNavigateToQuotation }) => {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
 
-  // Modals
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [selectedEnquiry, setSelectedEnquiry] = useState(null);
 
-  // Form State
   const [formData, setFormData] = useState({
     customer_id: '',
     required_date: '',
@@ -35,7 +55,6 @@ export const Enquiries = ({ onNavigateToQuotation }) => {
     items: [{ product_id: '', quantity: 1 }],
   });
 
-  // New Customer Form State
   const [newCustomer, setNewCustomer] = useState({
     company_name: '',
     contact_person: '',
@@ -65,23 +84,15 @@ export const Enquiries = ({ onNavigateToQuotation }) => {
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const handleAddItem = () => {
-    setFormData((prev) => ({
-      ...prev,
-      items: [...prev.items, { product_id: '', quantity: 1 }],
-    }));
+    setFormData((prev) => ({ ...prev, items: [...prev.items, { product_id: '', quantity: 1 }] }));
   };
 
   const handleRemoveItem = (index) => {
     if (formData.items.length === 1) return;
-    setFormData((prev) => ({
-      ...prev,
-      items: prev.items.filter((_, i) => i !== index),
-    }));
+    setFormData((prev) => ({ ...prev, items: prev.items.filter((_, i) => i !== index) }));
   };
 
   const handleItemChange = (index, field, value) => {
@@ -96,9 +107,8 @@ export const Enquiries = ({ onNavigateToQuotation }) => {
     e.preventDefault();
     setSubmitError('');
     setSubmitting(true);
-
     try {
-      const payload = {
+      await api.createEnquiry({
         customer_id: formData.customer_id,
         required_date: formData.required_date,
         notes: formData.notes,
@@ -106,16 +116,9 @@ export const Enquiries = ({ onNavigateToQuotation }) => {
           product_id: parseInt(it.product_id, 10),
           quantity: parseInt(it.quantity, 10),
         })),
-      };
-
-      await api.createEnquiry(payload);
-      setIsCreateOpen(false);
-      setFormData({
-        customer_id: '',
-        required_date: '',
-        notes: '',
-        items: [{ product_id: '', quantity: 1 }],
       });
+      setIsCreateOpen(false);
+      setFormData({ customer_id: '', required_date: '', notes: '', items: [{ product_id: '', quantity: 1 }] });
       fetchData();
     } catch (err) {
       setSubmitError(err.message || 'Failed to create enquiry.');
@@ -131,582 +134,395 @@ export const Enquiries = ({ onNavigateToQuotation }) => {
       setCustomers((prev) => [...prev, res.data]);
       setFormData((prev) => ({ ...prev, customer_id: res.data.id }));
       setIsCustomerModalOpen(false);
-      setNewCustomer({
-        company_name: '',
-        contact_person: '',
-        mobile: '',
-        email: '',
-        city: '',
-      });
+      setNewCustomer({ company_name: '', contact_person: '', mobile: '', email: '', city: '' });
     } catch (err) {
       alert(err.message || 'Failed to create customer');
     }
   };
 
-  const filteredEnquiries = enquiries.filter((enq) => {
-    const matchesSearch =
+  const filtered = enquiries.filter((enq) => {
+    const matchSearch =
       enq.enquiry_number.toLowerCase().includes(search.toLowerCase()) ||
       enq.customer?.company_name.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = filterStatus === 'ALL' || enq.status === filterStatus;
-    return matchesSearch && matchesStatus;
+    const matchStatus = filterStatus === 'ALL' || enq.status === filterStatus;
+    return matchSearch && matchStatus;
   });
 
   return (
-    <div className="card">
-      <div className="card-header">
-        <div>
-          <h2 className="card-title">
-            <FileQuestion size={22} color="var(--primary)" />
-            Customer Enquiries
-          </h2>
-          <p className="card-desc">
-            Manage incoming customer demand and specifications with multi-product items.
-          </p>
-        </div>
+    <Box>
+      <Paper variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden', bgcolor: '#fff' }}>
+        {/* Header */}
+        <Box sx={{ px: 3, py: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+          <Box>
+            <Typography variant="h6" fontWeight={700}>Customer Enquiries</Typography>
+            <Typography variant="caption" color="text.secondary">
+              Manage incoming customer demand and specifications
+            </Typography>
+          </Box>
+          <Button
+            id="btn-create-enquiry"
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => { setSubmitError(''); setIsCreateOpen(true); }}
+          >
+            Create Enquiry
+          </Button>
+        </Box>
 
-        <button
-          id="btn-create-enquiry"
-          className="btn btn-primary"
-          onClick={() => {
-            setSubmitError('');
-            setIsCreateOpen(true);
-          }}
-        >
-          <Plus size={18} />
-          Create Enquiry
-        </button>
-      </div>
-
-      {/* Filters Bar */}
-      <div
-        style={{
-          display: 'flex',
-          gap: '12px',
-          marginBottom: '20px',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-        }}
-      >
-        <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
-          <Search
-            size={16}
-            style={{
-              position: 'absolute',
-              left: '12px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: 'var(--text-dim)',
-            }}
-          />
-          <input
-            type="text"
-            className="form-input"
-            placeholder="Search by enquiry number or company name..."
-            style={{ paddingLeft: '36px' }}
+        {/* Filters */}
+        <Box sx={{ px: 3, py: 2, display: 'flex', gap: 2, flexWrap: 'wrap', borderBottom: '1px solid', borderColor: 'divider' }}>
+          <TextField
+            size="small"
+            placeholder="Search by enquiry number or company name…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" sx={{ color: 'text.secondary' }} /></InputAdornment> }}
+            sx={{ flex: 1, minWidth: 260 }}
           />
-        </div>
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <InputLabel>Status</InputLabel>
+            <Select label="Status" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+              <MenuItem value="ALL">All Statuses</MenuItem>
+              <MenuItem value="NEW">New</MenuItem>
+              <MenuItem value="QUOTED">Quoted</MenuItem>
+              <MenuItem value="WON">Won</MenuItem>
+              <MenuItem value="LOST">Lost</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Filter size={16} color="var(--text-dim)" />
-          <select
-            className="form-select"
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            style={{ width: '160px' }}
-          >
-            <option value="ALL">All Statuses</option>
-            <option value="NEW">NEW</option>
-            <option value="QUOTED">QUOTED</option>
-            <option value="WON">WON</option>
-            <option value="LOST">LOST</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Table */}
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-          Loading enquiries...
-        </div>
-      ) : filteredEnquiries.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-dim)' }}>
-          No customer enquiries found matching your criteria.
-        </div>
-      ) : (
-        <div className="table-container">
-          <table className="erp-table">
-            <thead>
-              <tr>
-                <th>Enquiry #</th>
-                <th>Customer Name</th>
-                <th>Enquiry Date</th>
-                <th>Required Date</th>
-                <th>Total Items</th>
-                <th>Status</th>
-                <th>Created By</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredEnquiries.map((enq) => (
-                <tr key={enq.id}>
-                  <td className="font-mono" style={{ fontWeight: 700, color: 'var(--primary)' }}>
-                    {enq.enquiry_number}
-                  </td>
-                  <td>
-                    <div style={{ fontWeight: 600 }}>{enq.customer?.company_name}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
-                      {enq.customer?.contact_person} • {enq.customer?.city}
-                    </div>
-                  </td>
-                  <td className="font-mono">
-                    {new Date(enq.enquiry_date).toLocaleDateString()}
-                  </td>
-                  <td className="font-mono">
-                    {new Date(enq.required_date).toLocaleDateString()}
-                  </td>
-                  <td>
-                    <span
-                      style={{
-                        background: 'var(--bg-subtle)',
-                        padding: '3px 8px',
-                        borderRadius: '4px',
-                        fontSize: '0.8rem',
-                        fontWeight: 600,
-                      }}
-                    >
-                      {enq.items?.length || 0} Products
-                    </span>
-                  </td>
-                  <td>
-                    <StatusBadge status={enq.status} />
-                  </td>
-                  <td style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                    {enq.creator?.name}
-                  </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'inline-flex', gap: '8px' }}>
-                      <button
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => setSelectedEnquiry(enq)}
-                      >
-                        View Details
-                      </button>
-                      {onNavigateToQuotation && (
-                        <button
-                          className="btn btn-primary btn-sm"
-                          onClick={() => onNavigateToQuotation(enq)}
-                          title="Generate Quotation against this Enquiry"
-                        >
-                          Quote
-                          <ArrowUpRight size={14} />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* CREATE ENQUIRY MODAL */}
-      <Modal
-        isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        title="Create Customer Enquiry"
-        maxWidth="740px"
-      >
-        {submitError && (
-          <div
-            style={{
-              background: 'rgba(239, 68, 68, 0.15)',
-              border: '1px solid rgba(239, 68, 68, 0.4)',
-              borderRadius: '6px',
-              padding: '10px 14px',
-              color: '#f87171',
-              fontSize: '0.85rem',
-              marginBottom: '16px',
-            }}
-          >
-            {submitError}
-          </div>
+        {/* Table */}
+        {loading ? (
+          <Box sx={{ py: 6, display: 'flex', justifyContent: 'center' }}><CircularProgress size={32} /></Box>
+        ) : filtered.length === 0 ? (
+          <Box sx={{ py: 6, textAlign: 'center' }}>
+            <AssignmentIcon sx={{ fontSize: 40, color: 'text.disabled', mb: 1 }} />
+            <Typography color="text.secondary">No enquiries found matching your criteria.</Typography>
+          </Box>
+        ) : (
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Enquiry #</TableCell>
+                  <TableCell>Customer</TableCell>
+                  <TableCell>Enquiry Date</TableCell>
+                  <TableCell>Required Date</TableCell>
+                  <TableCell>Items</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Created By</TableCell>
+                  <TableCell align="right">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filtered.map((enq) => (
+                  <TableRow key={enq.id}>
+                    <TableCell>
+                      <Typography variant="body2" fontWeight={700} color="primary.main" fontFamily="monospace">
+                        {enq.enquiry_number}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" fontWeight={600}>{enq.customer?.company_name}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {enq.customer?.contact_person} · {enq.customer?.city}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" fontFamily="monospace">
+                        {new Date(enq.enquiry_date).toLocaleDateString()}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" fontFamily="monospace">
+                        {new Date(enq.required_date).toLocaleDateString()}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={`${enq.items?.length || 0} products`}
+                        size="small"
+                        variant="outlined"
+                        sx={{ height: 22, fontSize: '0.72rem' }}
+                      />
+                    </TableCell>
+                    <TableCell><StatusBadge status={enq.status} /></TableCell>
+                    <TableCell>
+                      <Typography variant="caption" color="text.secondary">{enq.creator?.name}</Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                        <Button size="small" variant="outlined" onClick={() => setSelectedEnquiry(enq)} sx={{ fontSize: '0.78rem' }}>
+                          View
+                        </Button>
+                        {onNavigateToQuotation && (
+                          <Button
+                            size="small"
+                            variant="contained"
+                            endIcon={<OpenInNewIcon fontSize="small" />}
+                            onClick={() => onNavigateToQuotation(enq)}
+                            sx={{ fontSize: '0.78rem' }}
+                          >
+                            Quote
+                          </Button>
+                        )}
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
+      </Paper>
 
+      {/* CREATE ENQUIRY DIALOG */}
+      <Dialog open={isCreateOpen} onClose={() => setIsCreateOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Create Customer Enquiry</DialogTitle>
+        <Divider />
         <form onSubmit={handleCreateEnquiry}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-            <div className="form-group">
-              <label className="form-label">
-                Customer <span style={{ color: '#ef4444' }}>*</span>
-              </label>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <select
-                  required
-                  className="form-select"
-                  value={formData.customer_id}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, customer_id: e.target.value }))
-                  }
-                >
-                  <option value="">Select Customer...</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.company_name} ({c.city})
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
+          <DialogContent>
+            {submitError && <Alert severity="error" sx={{ mb: 2 }}>{submitError}</Alert>}
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={8}>
+                <FormControl fullWidth size="small" required>
+                  <InputLabel>Customer *</InputLabel>
+                  <Select
+                    label="Customer *"
+                    value={formData.customer_id}
+                    onChange={(e) => setFormData((p) => ({ ...p, customer_id: e.target.value }))}
+                  >
+                    <MenuItem value=""><em>Select Customer…</em></MenuItem>
+                    {customers.map((c) => (
+                      <MenuItem key={c.id} value={c.id}>{c.company_name} ({c.city})</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<PersonAddIcon />}
                   onClick={() => setIsCustomerModalOpen(true)}
-                  title="Add New Customer"
-                  style={{ whiteSpace: 'nowrap' }}
+                  sx={{ height: 40 }}
                 >
-                  + New
-                </button>
-              </div>
-            </div>
+                  + New Customer
+                </Button>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  type="date"
+                  label="Required By Date *"
+                  required
+                  fullWidth
+                  size="small"
+                  InputLabelProps={{ shrink: true }}
+                  value={formData.required_date}
+                  onChange={(e) => setFormData((p) => ({ ...p, required_date: e.target.value }))}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  label="Project / Requirement Notes"
+                  fullWidth
+                  size="small"
+                  multiline
+                  rows={2}
+                  placeholder="E.g. Requirement for turbine overhaul; test certificates required."
+                  value={formData.notes}
+                  onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))}
+                />
+              </Grid>
+            </Grid>
 
-            <div className="form-group">
-              <label className="form-label">
-                Required By Date <span style={{ color: '#ef4444' }}>*</span>
-              </label>
-              <input
-                type="date"
-                required
-                className="form-input"
-                value={formData.required_date}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, required_date: e.target.value }))
-                }
-              />
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Project / Requirement Notes</label>
-            <textarea
-              className="form-textarea"
-              rows={2}
-              placeholder="E.g. Requirement for turbine overhaul; test certificates required."
-              value={formData.notes}
-              onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
-            />
-          </div>
-
-          {/* Product Items Table */}
-          <div style={{ marginTop: '20px' }}>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '10px',
-              }}
-            >
-              <label className="form-label" style={{ marginBottom: 0 }}>
-                Products Required <span style={{ color: '#ef4444' }}>*</span>
-              </label>
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={handleAddItem}
-              >
-                <Plus size={14} /> Add Product
-              </button>
-            </div>
-
-            <div style={{ border: '1px solid var(--border-color)', borderRadius: '6px' }}>
-              {formData.items.map((item, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '2fr 1fr auto',
-                    gap: '12px',
-                    padding: '10px',
-                    alignItems: 'center',
-                    borderBottom:
-                      idx < formData.items.length - 1
-                        ? '1px solid var(--border-color)'
-                        : 'none',
-                    background: idx % 2 === 0 ? 'var(--bg-app)' : 'var(--bg-subtle)',
-                  }}
-                >
-                  <div>
-                    <select
-                      required
-                      className="form-select"
-                      value={item.product_id}
-                      onChange={(e) => handleItemChange(idx, 'product_id', e.target.value)}
-                    >
-                      <option value="">Select Industrial Product...</option>
-                      {products.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.product_code} - {p.product_name} ({p.unit})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <input
+            {/* Product Line Items */}
+            <Box sx={{ mt: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                <Typography variant="subtitle2" fontWeight={700}>Products Required *</Typography>
+                <Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={handleAddItem}>
+                  Add Product
+                </Button>
+              </Box>
+              <Paper variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden' }}>
+                {formData.items.map((item, idx) => (
+                  <Box
+                    key={idx}
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: '2fr 120px 40px',
+                      gap: 1.5,
+                      p: 1.5,
+                      alignItems: 'center',
+                      bgcolor: idx % 2 === 0 ? '#fafafa' : '#fff',
+                      borderBottom: idx < formData.items.length - 1 ? '1px solid' : 'none',
+                      borderColor: 'divider',
+                    }}
+                  >
+                    <FormControl size="small" required>
+                      <InputLabel>Product *</InputLabel>
+                      <Select
+                        label="Product *"
+                        value={item.product_id}
+                        onChange={(e) => handleItemChange(idx, 'product_id', e.target.value)}
+                      >
+                        <MenuItem value=""><em>Select product…</em></MenuItem>
+                        {products.map((p) => (
+                          <MenuItem key={p.id} value={p.id}>
+                            {p.product_code} – {p.product_name} ({p.unit})
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    <TextField
+                      size="small"
                       type="number"
+                      label="Qty *"
                       required
-                      min={1}
-                      className="form-input"
-                      placeholder="Quantity"
+                      inputProps={{ min: 1 }}
                       value={item.quantity}
                       onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)}
                     />
-                  </div>
-
-                  <div>
-                    <button
-                      type="button"
+                    <IconButton
+                      size="small"
+                      color="error"
                       disabled={formData.items.length === 1}
                       onClick={() => handleRemoveItem(idx)}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: formData.items.length === 1 ? 'var(--text-dim)' : '#ef4444',
-                        cursor: formData.items.length === 1 ? 'not-allowed' : 'pointer',
-                        padding: '6px',
-                      }}
                     >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="modal-footer" style={{ margin: '-24px', marginTop: '24px' }}>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => setIsCreateOpen(false)}
-            >
-              Cancel
-            </button>
-            <button
-              id="submit-enquiry-btn"
-              type="submit"
-              disabled={submitting}
-              className="btn btn-primary"
-            >
-              {submitting ? 'Creating...' : 'Create Enquiry'}
-            </button>
-          </div>
+                      <DeleteOutlineIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                ))}
+              </Paper>
+            </Box>
+          </DialogContent>
+          <Divider />
+          <DialogActions>
+            <Button variant="outlined" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+            <Button id="submit-enquiry-btn" type="submit" variant="contained" disabled={submitting}>
+              {submitting ? <CircularProgress size={18} color="inherit" /> : 'Create Enquiry'}
+            </Button>
+          </DialogActions>
         </form>
-      </Modal>
+      </Dialog>
 
-      {/* QUICK ADD CUSTOMER MODAL */}
-      <Modal
-        isOpen={isCustomerModalOpen}
-        onClose={() => setIsCustomerModalOpen(false)}
-        title="Add New Business Customer"
-        maxWidth="520px"
-      >
+      {/* ADD CUSTOMER DIALOG */}
+      <Dialog open={isCustomerModalOpen} onClose={() => setIsCustomerModalOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Add New Business Customer</DialogTitle>
+        <Divider />
         <form onSubmit={handleCreateCustomer}>
-          <div className="form-group">
-            <label className="form-label">Company Name *</label>
-            <input
-              required
-              className="form-input"
-              value={newCustomer.company_name}
-              onChange={(e) =>
-                setNewCustomer((prev) => ({ ...prev, company_name: e.target.value }))
-              }
-            />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Contact Person *</label>
-            <input
-              required
-              className="form-input"
-              value={newCustomer.contact_person}
-              onChange={(e) =>
-                setNewCustomer((prev) => ({ ...prev, contact_person: e.target.value }))
-              }
-            />
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div className="form-group">
-              <label className="form-label">Mobile *</label>
-              <input
-                required
-                className="form-input"
-                value={newCustomer.mobile}
-                onChange={(e) =>
-                  setNewCustomer((prev) => ({ ...prev, mobile: e.target.value }))
-                }
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">City *</label>
-              <input
-                required
-                className="form-input"
-                value={newCustomer.city}
-                onChange={(e) =>
-                  setNewCustomer((prev) => ({ ...prev, city: e.target.value }))
-                }
-              />
-            </div>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Email *</label>
-            <input
-              type="email"
-              required
-              className="form-input"
-              value={newCustomer.email}
-              onChange={(e) =>
-                setNewCustomer((prev) => ({ ...prev, email: e.target.value }))
-              }
-            />
-          </div>
-          <div className="modal-footer" style={{ margin: '-24px', marginTop: '20px' }}>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => setIsCustomerModalOpen(false)}
-            >
-              Cancel
-            </button>
-            <button type="submit" className="btn btn-primary">
-              Save Customer
-            </button>
-          </div>
+          <DialogContent>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <TextField label="Company Name *" required fullWidth size="small" value={newCustomer.company_name} onChange={(e) => setNewCustomer((p) => ({ ...p, company_name: e.target.value }))} />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField label="Contact Person *" required fullWidth size="small" value={newCustomer.contact_person} onChange={(e) => setNewCustomer((p) => ({ ...p, contact_person: e.target.value }))} />
+              </Grid>
+              <Grid item xs={6}>
+                <TextField label="Mobile *" required fullWidth size="small" value={newCustomer.mobile} onChange={(e) => setNewCustomer((p) => ({ ...p, mobile: e.target.value }))} />
+              </Grid>
+              <Grid item xs={6}>
+                <TextField label="City *" required fullWidth size="small" value={newCustomer.city} onChange={(e) => setNewCustomer((p) => ({ ...p, city: e.target.value }))} />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField label="Email *" type="email" required fullWidth size="small" value={newCustomer.email} onChange={(e) => setNewCustomer((p) => ({ ...p, email: e.target.value }))} />
+              </Grid>
+            </Grid>
+          </DialogContent>
+          <Divider />
+          <DialogActions>
+            <Button variant="outlined" onClick={() => setIsCustomerModalOpen(false)}>Cancel</Button>
+            <Button type="submit" variant="contained">Save Customer</Button>
+          </DialogActions>
         </form>
-      </Modal>
+      </Dialog>
 
-      {/* ENQUIRY DETAILS MODAL */}
-      <Modal
-        isOpen={!!selectedEnquiry}
-        onClose={() => setSelectedEnquiry(null)}
-        title={`Enquiry Details: ${selectedEnquiry?.enquiry_number}`}
-        maxWidth="680px"
-      >
-        {selectedEnquiry && (
-          <div>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '16px',
-                background: 'var(--bg-subtle)',
-                padding: '16px',
-                borderRadius: '8px',
-                marginBottom: '20px',
+      {/* ENQUIRY DETAILS DIALOG */}
+      <Dialog open={!!selectedEnquiry} onClose={() => setSelectedEnquiry(null)} maxWidth="md" fullWidth>
+        <DialogTitle>
+          Enquiry Details — {selectedEnquiry?.enquiry_number}
+        </DialogTitle>
+        <Divider />
+        <DialogContent>
+          {selectedEnquiry && (
+            <Box>
+              <Grid container spacing={2} sx={{ mb: 2 }}>
+                <Grid item xs={12} sm={6}>
+                  <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                    <Typography variant="caption" color="text.secondary" textTransform="uppercase" letterSpacing="0.06em" fontWeight={700}>Customer</Typography>
+                    <Typography variant="subtitle1" fontWeight={700} mt={0.5}>{selectedEnquiry.customer?.company_name}</Typography>
+                    <Typography variant="caption" color="text.secondary" display="block">{selectedEnquiry.customer?.contact_person} · {selectedEnquiry.customer?.mobile}</Typography>
+                    <Typography variant="caption" color="text.secondary">{selectedEnquiry.customer?.city}</Typography>
+                  </Paper>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                    <Typography variant="caption" color="text.secondary" textTransform="uppercase" letterSpacing="0.06em" fontWeight={700}>Status &amp; Dates</Typography>
+                    <Box mt={0.5} mb={1}><StatusBadge status={selectedEnquiry.status} /></Box>
+                    <Typography variant="caption" color="text.secondary" display="block">Enquiry: {new Date(selectedEnquiry.enquiry_date).toLocaleDateString()}</Typography>
+                    <Typography variant="caption" color="text.secondary">Required: {new Date(selectedEnquiry.required_date).toLocaleDateString()}</Typography>
+                  </Paper>
+                </Grid>
+              </Grid>
+
+              {selectedEnquiry.notes && (
+                <Alert severity="info" icon={false} sx={{ mb: 2, borderRadius: 2 }}>
+                  <Typography variant="caption" fontWeight={700}>Notes: </Typography>
+                  <Typography variant="caption">{selectedEnquiry.notes}</Typography>
+                </Alert>
+              )}
+
+              <Typography variant="subtitle2" fontWeight={700} mb={1}>
+                Product Line Items ({selectedEnquiry.items?.length || 0})
+              </Typography>
+              <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Product Code</TableCell>
+                      <TableCell>Product Name</TableCell>
+                      <TableCell>Category</TableCell>
+                      <TableCell align="right">Required Qty</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {selectedEnquiry.items?.map((it) => (
+                      <TableRow key={it.id}>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight={700} color="primary.main" fontFamily="monospace">{it.product?.product_code}</Typography>
+                        </TableCell>
+                        <TableCell><Typography variant="body2">{it.product?.product_name}</Typography></TableCell>
+                        <TableCell><Chip label={it.product?.category} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} /></TableCell>
+                        <TableCell align="right">
+                          <Typography variant="body2" fontWeight={700} fontFamily="monospace">{it.quantity} {it.product?.unit}</Typography>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          )}
+        </DialogContent>
+        <Divider />
+        <DialogActions>
+          <Button variant="outlined" onClick={() => setSelectedEnquiry(null)}>Close</Button>
+          {onNavigateToQuotation && (
+            <Button
+              variant="contained"
+              endIcon={<OpenInNewIcon />}
+              onClick={() => {
+                const enq = selectedEnquiry;
+                setSelectedEnquiry(null);
+                onNavigateToQuotation(enq);
               }}
             >
-              <div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>
-                  Customer
-                </div>
-                <div style={{ fontWeight: 700, fontSize: '1rem' }}>
-                  {selectedEnquiry.customer?.company_name}
-                </div>
-                <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                  {selectedEnquiry.customer?.contact_person} • {selectedEnquiry.customer?.mobile}
-                </div>
-                <div style={{ fontSize: '0.82rem', color: 'var(--text-dim)' }}>
-                  {selectedEnquiry.customer?.city}
-                </div>
-              </div>
-
-              <div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>
-                  Lifecycle Status
-                </div>
-                <div style={{ marginTop: '4px' }}>
-                  <StatusBadge status={selectedEnquiry.status} />
-                </div>
-                <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-                  Enquiry Date: {new Date(selectedEnquiry.enquiry_date).toLocaleDateString()}
-                </div>
-                <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                  Required Date: {new Date(selectedEnquiry.required_date).toLocaleDateString()}
-                </div>
-              </div>
-            </div>
-
-            {selectedEnquiry.notes && (
-              <div
-                style={{
-                  background: 'var(--bg-app)',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: '6px',
-                  padding: '12px',
-                  fontSize: '0.85rem',
-                  marginBottom: '20px',
-                }}
-              >
-                <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>Notes: </span>
-                {selectedEnquiry.notes}
-              </div>
-            )}
-
-            <h4 style={{ fontSize: '0.9rem', marginBottom: '10px' }}>
-              Enquiry Product Line Items ({selectedEnquiry.items?.length || 0})
-            </h4>
-
-            <div className="table-container" style={{ marginBottom: '20px' }}>
-              <table className="erp-table">
-                <thead>
-                  <tr>
-                    <th>Product Code</th>
-                    <th>Product Name</th>
-                    <th>Category</th>
-                    <th>Required Qty</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedEnquiry.items?.map((it) => (
-                    <tr key={it.id}>
-                      <td className="font-mono" style={{ fontWeight: 600, color: 'var(--primary)' }}>
-                        {it.product?.product_code}
-                      </td>
-                      <td>{it.product?.product_name}</td>
-                      <td>{it.product?.category}</td>
-                      <td className="font-mono" style={{ fontWeight: 700 }}>
-                        {it.quantity} {it.product?.unit}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="modal-footer" style={{ margin: '-24px', marginTop: '16px' }}>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setSelectedEnquiry(null)}
-              >
-                Close
-              </button>
-              {onNavigateToQuotation && (
-                <button
-                  className="btn btn-primary"
-                  onClick={() => {
-                    const enq = selectedEnquiry;
-                    setSelectedEnquiry(null);
-                    onNavigateToQuotation(enq);
-                  }}
-                >
-                  Create Quotation for this Enquiry
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-      </Modal>
-    </div>
+              Create Quotation
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 };

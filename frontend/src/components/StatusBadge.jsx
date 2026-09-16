@@ -1,39 +1,44 @@
 import React from 'react';
+import Chip from '@mui/material/Chip';
 
 const STATUS_CONFIG = {
-  NEW: { class: 'badge-new', dotColor: '#38bdf8', label: 'NEW' },
-  QUOTED: { class: 'badge-quoted', dotColor: '#c084fc', label: 'QUOTED' },
-  WON: { class: 'badge-won', dotColor: '#34d399', label: 'WON' },
-  LOST: { class: 'badge-lost', dotColor: '#f87171', label: 'LOST' },
+  NEW:        { label: 'New',         bgcolor: '#e0f2fe', color: '#0369a1' },
+  QUOTED:     { label: 'Quoted',      bgcolor: '#ede9fe', color: '#6d28d9' },
+  WON:        { label: 'Won',         bgcolor: '#dcfce7', color: '#15803d' },
+  LOST:       { label: 'Lost',        bgcolor: '#fee2e2', color: '#b91c1c' },
 
-  DRAFT: { class: 'badge-draft', dotColor: '#fbbf24', label: 'DRAFT' },
-  SENT: { class: 'badge-sent', dotColor: '#60a5fa', label: 'SENT' },
-  ACCEPTED: { class: 'badge-accepted', dotColor: '#34d399', label: 'ACCEPTED' },
-  REJECTED: { class: 'badge-rejected', dotColor: '#f87171', label: 'REJECTED' },
+  DRAFT:      { label: 'Draft',       bgcolor: '#fef9c3', color: '#92400e' },
+  SENT:       { label: 'Sent',        bgcolor: '#dbeafe', color: '#1d4ed8' },
+  ACCEPTED:   { label: 'Accepted',    bgcolor: '#dcfce7', color: '#15803d' },
+  REJECTED:   { label: 'Rejected',    bgcolor: '#fee2e2', color: '#b91c1c' },
 
-  PENDING: { class: 'badge-pending', dotColor: '#fbbf24', label: 'PENDING' },
-  CONFIRMED: { class: 'badge-confirmed', dotColor: '#60a5fa', label: 'CONFIRMED' },
-  DISPATCHED: { class: 'badge-dispatched', dotColor: '#34d399', label: 'DISPATCHED' },
-  CANCELLED: { class: 'badge-cancelled', dotColor: '#f87171', label: 'CANCELLED' },
+  PENDING:    { label: 'Pending',     bgcolor: '#fef3c7', color: '#92400e' },
+  CONFIRMED:  { label: 'Confirmed',   bgcolor: '#dbeafe', color: '#1d4ed8' },
+  RESERVED:   { label: 'Reserved',    bgcolor: '#d1fae5', color: '#065f46' },
+  DISPATCHED: { label: 'Dispatched',  bgcolor: '#dcfce7', color: '#15803d' },
+  CANCELLED:  { label: 'Cancelled',   bgcolor: '#fee2e2', color: '#b91c1c' },
 };
 
 export const StatusBadge = ({ status }) => {
-  const config = STATUS_CONFIG[status] || {
-    class: 'badge-draft',
-    dotColor: '#94a3b8',
+  const cfg = STATUS_CONFIG[status] || {
     label: status,
+    bgcolor: '#f3f4f6',
+    color: '#374151',
   };
 
   return (
-    <span className={`badge ${config.class}`}>
-      <span
-        className="badge-dot"
-        style={{
-          backgroundColor: config.dotColor,
-          boxShadow: `0 0 6px ${config.dotColor}`,
-        }}
-      />
-      {config.label}
-    </span>
+    <Chip
+      label={cfg.label}
+      size="small"
+      sx={{
+        bgcolor: cfg.bgcolor,
+        color: cfg.color,
+        fontWeight: 700,
+        fontSize: '0.72rem',
+        height: 22,
+        borderRadius: '6px',
+        '& .MuiChip-label': { px: '8px' },
+      }}
+    />
   );
 };

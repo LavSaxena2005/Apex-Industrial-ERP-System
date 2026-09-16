@@ -1,11 +1,29 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Factory, Shield, User, ArrowRight, CheckCircle2, Lock } from 'lucide-react';
+import {
+  Box,
+  Paper,
+  Typography,
+  TextField,
+  Button,
+  Divider,
+  Alert,
+  CircularProgress,
+  InputAdornment,
+  IconButton,
+  Stack,
+} from '@mui/material';
+import FactoryIcon from '@mui/icons-material/Factory';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import PersonIcon from '@mui/icons-material/Person';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 
-export const Login = () => {
+const Login = () => {
   const { login, quickLogin } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -35,182 +53,229 @@ export const Login = () => {
   };
 
   return (
-    <div
-      style={{
+    <Box
+      sx={{
         minHeight: '100vh',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '24px',
-        background: 'radial-gradient(ellipse at top, #131b2e 0%, #080c14 70%)',
+        bgcolor: '#f3f4f6',
       }}
     >
-      <div style={{ width: '100%', maxWidth: '460px' }}>
-        {/* Header Branding */}
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div
-            style={{
-              width: '56px',
-              height: '56px',
-              background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
-              borderRadius: '16px',
-              display: 'inline-flex',
+      {/* Left panel — branding */}
+      <Box
+        sx={{
+          display: { xs: 'none', md: 'flex' },
+          flex: '0 0 420px',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          px: 6,
+          bgcolor: '#ffffff',
+          borderRight: '1px solid',
+          borderColor: 'divider',
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Background accent */}
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            backgroundImage:
+              'radial-gradient(circle at 80% 20%, rgba(255,255,255,0.08) 0%, transparent 60%),' +
+              'radial-gradient(circle at 20% 80%, rgba(0,0,0,0.15) 0%, transparent 60%)',
+          }}
+        />
+        <Box sx={{ position: 'relative', zIndex: 1 }}>
+          <Box
+            sx={{
+              width: 52,
+              height: 52,
+              bgcolor: 'rgba(255,255,255,0.15)',
+              borderRadius: 2,
+              display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 0 25px rgba(59, 130, 246, 0.4)',
-              marginBottom: '16px',
+              mb: 3,
             }}
           >
-            <Factory size={32} color="#ffffff" />
-          </div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
+            <FactoryIcon sx={{ fontSize: 28, color: 'primary.main' }} />
+          </Box>
+          <Typography variant="h4" fontWeight={700} color="text.primary" gutterBottom>
             Apex Industrial ERP
-          </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '6px' }}>
-            Enterprise Sales Lifecycle & Real-Time Inventory Control
-          </p>
-        </div>
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.7 }}>
+            Enterprise Sales Lifecycle &amp; Real-Time Inventory Control
+          </Typography>
 
-        {/* Login Card */}
-        <div className="card" style={{ padding: '32px' }}>
-          {error && (
-            <div
-              style={{
-                background: 'rgba(239, 68, 68, 0.15)',
-                border: '1px solid rgba(239, 68, 68, 0.4)',
-                borderRadius: '8px',
-                padding: '12px 16px',
-                color: '#f87171',
-                fontSize: '0.85rem',
-                marginBottom: '20px',
+          <Box sx={{ mt: 5 }}>
+            {[
+              'Customer → Enquiry',
+              'Enquiry → Quotation',
+              'Quotation → Sales Order',
+              'Sales Order → Dispatch',
+            ].map((step) => (
+              <Box key={step} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+                <Box
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    bgcolor: 'primary.main',
+                    flexShrink: 0,
+                  }}
+                />
+                <Typography variant="body2" color="text.primary" fontWeight={500}>
+                  {step}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        </Box>
+      </Box>
+
+      {/* Right panel — login form */}
+      <Box
+        sx={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          p: 3,
+        }}
+      >
+        <Box sx={{ width: '100%', maxWidth: 420 }}>
+          {/* Mobile brand */}
+          <Box sx={{ display: { md: 'none' }, textAlign: 'center', mb: 3 }}>
+            <Box
+              sx={{
+                width: 44,
+                height: 44,
+                bgcolor: 'primary.main',
+                borderRadius: 2,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mb: 1,
               }}
             >
-              {error}
-            </div>
-          )}
+              <FactoryIcon sx={{ color: '#fff', fontSize: 24 }} />
+            </Box>
+            <Typography variant="h6" fontWeight={700}>
+              Apex Industrial ERP
+            </Typography>
+          </Box>
 
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label className="form-label" htmlFor="email-input">
-                Email Address
-              </label>
-              <input
-                id="email-input"
-                type="email"
-                required
-                className="form-input"
-                placeholder="name@apex.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
+          <Paper elevation={1} sx={{ p: 4, borderRadius: 3 }}>
+            <Typography variant="h6" fontWeight={700} mb={0.5}>
+              Sign in to your account
+            </Typography>
+            <Typography variant="body2" color="text.secondary" mb={3}>
+              Enter your credentials below to continue
+            </Typography>
 
-            <div className="form-group" style={{ marginBottom: '24px' }}>
-              <label className="form-label" htmlFor="password-input">
-                Password
-              </label>
-              <input
-                id="password-input"
-                type="password"
-                required
-                className="form-input"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {error}
+              </Alert>
+            )}
 
-            <button
-              id="btn-submit-login"
-              type="submit"
-              disabled={loading}
-              className="btn btn-primary"
-              style={{ width: '100%', padding: '12px', fontSize: '0.95rem' }}
-            >
-              {loading ? 'Authenticating...' : 'Sign In to Workspace'}
-              <ArrowRight size={18} />
-            </button>
-          </form>
+            <form onSubmit={handleSubmit}>
+              <Stack spacing={2}>
+                <TextField
+                  id="email-input"
+                  label="Email address"
+                  type="email"
+                  required
+                  fullWidth
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+                <TextField
+                  id="password-input"
+                  label="Password"
+                  type={showPwd ? 'text' : 'password'}
+                  required
+                  fullWidth
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          size="small"
+                          onClick={() => setShowPwd((s) => !s)}
+                          edge="end"
+                        >
+                          {showPwd ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                <Button
+                  id="btn-submit-login"
+                  type="submit"
+                  variant="contained"
+                  fullWidth
+                  size="large"
+                  disabled={loading}
+                  sx={{ mt: 1, py: 1.25 }}
+                >
+                  {loading ? <CircularProgress size={20} color="inherit" /> : 'Sign In'}
+                </Button>
+              </Stack>
+            </form>
 
-          {/* Quick Demo Login Switcher */}
-          <div style={{ marginTop: '28px', paddingTop: '24px', borderTop: '1px solid var(--border-color)' }}>
-            <div
-              style={{
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                color: 'var(--text-dim)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                marginBottom: '12px',
-                textAlign: 'center',
-              }}
-            >
-              Quick Demo Access (One-Click)
-            </div>
+            <Divider sx={{ my: 3 }}>
+              <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                Quick Demo Access
+              </Typography>
+            </Divider>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <button
+            <Stack direction="row" spacing={1.5}>
+              <Button
                 id="demo-admin-login"
-                type="button"
+                variant="outlined"
+                fullWidth
                 disabled={loading}
                 onClick={() => handleQuickDemo('ADMIN')}
-                className="btn btn-secondary"
-                style={{
-                  padding: '10px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '4px',
-                  height: 'auto',
-                }}
+                startIcon={<AdminPanelSettingsIcon />}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Shield size={16} color="#c084fc" />
-                  <span style={{ fontWeight: 700 }}>Admin</span>
-                </div>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>
-                  Confirm & Dispatch
-                </span>
-              </button>
+                <Box textAlign="left">
+                  <Typography variant="caption" display="block" fontWeight={700} lineHeight={1.2}>
+                    Admin
+                  </Typography>
+                  <Typography variant="caption" display="block" color="text.secondary" fontSize="0.65rem">
+                    Confirm &amp; Dispatch
+                  </Typography>
+                </Box>
+              </Button>
 
-              <button
+              <Button
                 id="demo-sales-login"
-                type="button"
+                variant="outlined"
+                fullWidth
                 disabled={loading}
                 onClick={() => handleQuickDemo('SALES_USER')}
-                className="btn btn-secondary"
-                style={{
-                  padding: '10px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '4px',
-                  height: 'auto',
-                }}
+                startIcon={<PersonIcon />}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <User size={16} color="#38bdf8" />
-                  <span style={{ fontWeight: 700 }}>Sales Exec</span>
-                </div>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>
-                  Enquiries & Quotes
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Workflow Footer */}
-        <div
-          style={{
-            marginTop: '24px',
-            textAlign: 'center',
-            fontSize: '0.78rem',
-            color: 'var(--text-dim)',
-            lineHeight: '1.6',
-          }}
-        >
-          Customer ➔ Enquiry ➔ Quotation ➔ Sales Order ➔ Stock Reservation ➔ Dispatch
-        </div>
-      </div>
-    </div>
+                <Box textAlign="left">
+                  <Typography variant="caption" display="block" fontWeight={700} lineHeight={1.2}>
+                    Sales Exec
+                  </Typography>
+                  <Typography variant="caption" display="block" color="text.secondary" fontSize="0.65rem">
+                    Enquiries &amp; Quotes
+                  </Typography>
+                </Box>
+              </Button>
+            </Stack>
+          </Paper>
+        </Box>
+      </Box>
+    </Box>
   );
 };
+
+export default Login;

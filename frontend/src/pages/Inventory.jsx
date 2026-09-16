@@ -1,18 +1,61 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Modal } from '../components/Modal';
 import {
-  Boxes,
-  Package,
-  Layers,
-  CheckCircle2,
-  AlertTriangle,
-  Edit,
-  Search,
-  Filter,
-  TrendingUp,
-} from 'lucide-react';
+  Box,
+  Paper,
+  Typography,
+  Button,
+  TextField,
+  InputAdornment,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  TableContainer,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Alert,
+  Grid,
+  Divider,
+} from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import EditIcon from '@mui/icons-material/Edit';
+import Inventory2Icon from '@mui/icons-material/Inventory2';
+import WarehouseIcon from '@mui/icons-material/Warehouse';
+import LockIcon from '@mui/icons-material/Lock';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import CategoryIcon from '@mui/icons-material/Category';
+
+const StatCard = ({ icon, label, value, color }) => (
+  <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2, bgcolor: '#fff' }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+      <Typography variant="caption" fontWeight={700} color="text.secondary" textTransform="uppercase" letterSpacing="0.06em">
+        {label}
+      </Typography>
+      <Box sx={{ color }}>{icon}</Box>
+    </Box>
+    <Typography variant="h5" fontWeight={700} color={color || 'text.primary'}>
+      {value}
+    </Typography>
+  </Paper>
+);
+
+const StockHealth = ({ avail }) => {
+  if (avail > 20) return <Chip label="Optimal" size="small" sx={{ bgcolor: '#dcfce7', color: '#15803d', fontWeight: 700, height: 22, fontSize: '0.72rem' }} />;
+  if (avail > 0)  return <Chip label="Low Stock" size="small" sx={{ bgcolor: '#fef3c7', color: '#92400e', fontWeight: 700, height: 22, fontSize: '0.72rem' }} />;
+  return             <Chip label="Out of Stock" size="small" sx={{ bgcolor: '#fee2e2', color: '#b91c1c', fontWeight: 700, height: 22, fontSize: '0.72rem' }} />;
+};
 
 export const Inventory = () => {
   const { isAdmin } = useAuth();
@@ -20,8 +63,6 @@ export const Inventory = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('ALL');
-
-  // Edit Stock Modal
   const [editingItem, setEditingItem] = useState(null);
   const [physicalQty, setPhysicalQty] = useState('');
   const [editError, setEditError] = useState('');
@@ -39,9 +80,7 @@ export const Inventory = () => {
     }
   };
 
-  useEffect(() => {
-    fetchInventory();
-  }, []);
+  useEffect(() => { fetchInventory(); }, []);
 
   const handleOpenEdit = (item) => {
     setEditingItem(item);
@@ -53,7 +92,6 @@ export const Inventory = () => {
     e.preventDefault();
     setEditError('');
     setSaving(true);
-
     try {
       await api.updatePhysicalStock(editingItem.product_id, parseInt(physicalQty, 10));
       setEditingItem(null);
@@ -65,337 +103,200 @@ export const Inventory = () => {
     }
   };
 
-  // KPIs
-  const totalPhysical = inventory.reduce((acc, i) => acc + (i.physical_quantity || 0), 0);
-  const totalReserved = inventory.reduce((acc, i) => acc + (i.reserved_quantity || 0), 0);
+  const totalPhysical = inventory.reduce((a, i) => a + (i.physical_quantity || 0), 0);
+  const totalReserved = inventory.reduce((a, i) => a + (i.reserved_quantity || 0), 0);
   const totalAvailable = totalPhysical - totalReserved;
-
   const categories = ['ALL', ...new Set(inventory.map((i) => i.category))];
 
-  const filteredInventory = inventory.filter((item) => {
-    const matchesSearch =
+  const filtered = inventory.filter((item) => {
+    const matchSearch =
       item.product_code.toLowerCase().includes(search.toLowerCase()) ||
       item.product_name.toLowerCase().includes(search.toLowerCase());
-    const matchesCat = filterCategory === 'ALL' || item.category === filterCategory;
-    return matchesSearch && matchesCat;
+    const matchCat = filterCategory === 'ALL' || item.category === filterCategory;
+    return matchSearch && matchCat;
   });
 
   return (
-    <div>
-      {/* Metric Cards Header */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '16px',
-          marginBottom: '24px',
-        }}
-      >
-        <div className="card" style={{ padding: '18px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-              TOTAL CATALOG PRODUCTS
-            </span>
-            <Boxes size={20} color="var(--primary)" />
-          </div>
-          <div className="font-mono" style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '8px' }}>
-            {inventory.length}
-          </div>
-        </div>
+    <Box>
+      {/* KPI Cards */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard icon={<Inventory2Icon />} label="Total Products" value={inventory.length} color="primary.main" />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard icon={<WarehouseIcon />} label="Physical Stock" value={`${totalPhysical} units`} color="#0369a1" />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard icon={<LockIcon />} label="Reserved for Orders" value={`${totalReserved} units`} color="#92400e" />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard icon={<TrendingUpIcon />} label="Available to Sell" value={`${totalAvailable} units`} color="#15803d" />
+        </Grid>
+      </Grid>
 
-        <div className="card" style={{ padding: '18px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-              PHYSICAL STOCK
-            </span>
-            <Package size={20} color="#38bdf8" />
-          </div>
-          <div className="font-mono" style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '8px' }}>
-            {totalPhysical} <span style={{ fontSize: '0.9rem', color: 'var(--text-dim)' }}>units</span>
-          </div>
-        </div>
-
-        <div className="card" style={{ padding: '18px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-              RESERVED FOR ORDERS
-            </span>
-            <Layers size={20} color="#f59e0b" />
-          </div>
-          <div
-            className="font-mono"
-            style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '8px', color: '#fbbf24' }}
-          >
-            {totalReserved} <span style={{ fontSize: '0.9rem', color: 'var(--text-dim)' }}>units</span>
-          </div>
-        </div>
-
-        <div className="card" style={{ padding: '18px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-              AVAILABLE TO SELL
-            </span>
-            <TrendingUp size={20} color="#10b981" />
-          </div>
-          <div
-            className="font-mono"
-            style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '8px', color: '#34d399' }}
-          >
-            {totalAvailable} <span style={{ fontSize: '0.9rem', color: 'var(--text-dim)' }}>units</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="card">
-        <div className="card-header">
-          <div>
-            <h2 className="card-title">
-              <Boxes size={22} color="var(--primary)" />
-              Inventory & Availability Master
-            </h2>
-            <p className="card-desc">
-              Formula: Available Quantity = Physical Quantity − Reserved Quantity (Real-time computed).
-            </p>
-          </div>
-
-          <button
-            className="btn btn-secondary btn-sm"
+      {/* Main Table Card */}
+      <Paper variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden', bgcolor: '#fff' }}>
+        {/* Header */}
+        <Box sx={{ px: 3, py: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+          <Box>
+            <Typography variant="h6" fontWeight={700}>Inventory &amp; Availability</Typography>
+            <Typography variant="caption" color="text.secondary">
+              Available = Physical − Reserved (real-time)
+            </Typography>
+          </Box>
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<RefreshIcon />}
             onClick={fetchInventory}
-            title="Refresh Stock Availability"
           >
-            Refresh Stock
-          </button>
-        </div>
+            Refresh
+          </Button>
+        </Box>
 
         {/* Filters */}
-        <div
-          style={{
-            display: 'flex',
-            gap: '12px',
-            marginBottom: '20px',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-          }}
-        >
-          <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
-            <Search
-              size={16}
-              style={{
-                position: 'absolute',
-                left: '12px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                color: 'var(--text-dim)',
-              }}
-            />
-            <input
-              type="text"
-              className="form-input"
-              placeholder="Search product code or name..."
-              style={{ paddingLeft: '36px' }}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Filter size={16} color="var(--text-dim)" />
-            <select
-              className="form-select"
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              style={{ width: '160px' }}
-            >
+        <Box sx={{ px: 3, py: 2, display: 'flex', gap: 2, flexWrap: 'wrap', borderBottom: '1px solid', borderColor: 'divider' }}>
+          <TextField
+            size="small"
+            placeholder="Search product code or name…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" sx={{ color: 'text.secondary' }} /></InputAdornment> }}
+            sx={{ flex: 1, minWidth: 220 }}
+          />
+          <FormControl size="small" sx={{ minWidth: 180 }}>
+            <InputLabel>Category</InputLabel>
+            <Select label="Category" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
               {categories.map((c) => (
-                <option key={c} value={c}>
-                  {c === 'ALL' ? 'All Categories' : c}
-                </option>
+                <MenuItem key={c} value={c}>{c === 'ALL' ? 'All Categories' : c}</MenuItem>
               ))}
-            </select>
-          </div>
-        </div>
+            </Select>
+          </FormControl>
+        </Box>
 
-        {/* Inventory Table */}
+        {/* Table */}
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-            Loading stock status...
-          </div>
-        ) : filteredInventory.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-dim)' }}>
-            No inventory records found.
-          </div>
+          <Box sx={{ py: 6, display: 'flex', justifyContent: 'center' }}>
+            <CircularProgress size={32} />
+          </Box>
+        ) : filtered.length === 0 ? (
+          <Box sx={{ py: 6, textAlign: 'center' }}>
+            <CategoryIcon sx={{ fontSize: 40, color: 'text.disabled', mb: 1 }} />
+            <Typography color="text.secondary">No inventory records found.</Typography>
+          </Box>
         ) : (
-          <div className="table-container">
-            <table className="erp-table">
-              <thead>
-                <tr>
-                  <th>Product Code</th>
-                  <th>Product Name</th>
-                  <th>Category</th>
-                  <th>Unit</th>
-                  <th>Base Price</th>
-                  <th>Physical Stock</th>
-                  <th>Reserved Stock</th>
-                  <th>Available Stock</th>
-                  <th>Stock Health</th>
-                  {isAdmin && <th style={{ textAlign: 'right' }}>Admin Action</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredInventory.map((item) => {
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Product Code</TableCell>
+                  <TableCell>Product Name</TableCell>
+                  <TableCell>Category</TableCell>
+                  <TableCell>Unit</TableCell>
+                  <TableCell>Base Price</TableCell>
+                  <TableCell align="right">Physical</TableCell>
+                  <TableCell align="right">Reserved</TableCell>
+                  <TableCell align="right">Available</TableCell>
+                  <TableCell>Health</TableCell>
+                  {isAdmin && <TableCell align="right">Action</TableCell>}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filtered.map((item) => {
                   const avail = item.available_quantity;
-                  const isHealthy = avail > 20;
-                  const isLow = avail > 0 && avail <= 20;
-                  const isDepleted = avail <= 0;
-
                   return (
-                    <tr key={item.id}>
-                      <td className="font-mono" style={{ fontWeight: 700, color: 'var(--primary)' }}>
-                        {item.product_code}
-                      </td>
-                      <td style={{ fontWeight: 600 }}>{item.product_name}</td>
-                      <td>
-                        <span
-                          style={{
-                            background: 'var(--bg-subtle)',
-                            padding: '3px 8px',
-                            borderRadius: '4px',
-                            fontSize: '0.8rem',
-                          }}
+                    <TableRow key={item.id}>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={700} color="primary.main" fontFamily="monospace">
+                          {item.product_code}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={600}>{item.product_name}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Chip label={item.category} size="small" variant="outlined" sx={{ fontSize: '0.75rem', height: 22 }} />
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">{item.unit}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" fontFamily="monospace">
+                          ₹{Number(item.base_price).toLocaleString('en-IN')}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Typography variant="body2" fontWeight={600} fontFamily="monospace">{item.physical_quantity}</Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Typography variant="body2" fontFamily="monospace" color="warning.main" fontWeight={600}>{item.reserved_quantity}</Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Typography
+                          variant="body2"
+                          fontWeight={700}
+                          fontFamily="monospace"
+                          color={avail > 20 ? 'success.main' : avail > 0 ? 'warning.main' : 'error.main'}
                         >
-                          {item.category}
-                        </span>
-                      </td>
-                      <td className="font-mono">{item.unit}</td>
-                      <td className="font-mono">₹{Number(item.base_price).toLocaleString('en-IN')}</td>
-                      <td className="font-mono" style={{ fontWeight: 600 }}>
-                        {item.physical_quantity}
-                      </td>
-                      <td className="font-mono" style={{ color: '#fbbf24', fontWeight: 600 }}>
-                        {item.reserved_quantity}
-                      </td>
-                      <td className="font-mono" style={{ fontWeight: 800, fontSize: '1rem' }}>
-                        <span style={{ color: isHealthy ? '#34d399' : isLow ? '#fbbf24' : '#f87171' }}>
                           {avail}
-                        </span>
-                      </td>
-                      <td>
-                        {isHealthy && (
-                          <span className="stock-badge-green" style={{ fontSize: '0.75rem' }}>
-                            ● Optimal
-                          </span>
-                        )}
-                        {isLow && (
-                          <span
-                            style={{
-                              background: 'rgba(245, 158, 11, 0.15)',
-                              color: '#fbbf24',
-                              padding: '3px 8px',
-                              borderRadius: '4px',
-                              fontSize: '0.75rem',
-                              fontWeight: 600,
-                            }}
-                          >
-                            ▲ Low Stock
-                          </span>
-                        )}
-                        {isDepleted && (
-                          <span className="stock-badge-red" style={{ fontSize: '0.75rem' }}>
-                            ✖ Out of Stock
-                          </span>
-                        )}
-                      </td>
+                        </Typography>
+                      </TableCell>
+                      <TableCell><StockHealth avail={avail} /></TableCell>
                       {isAdmin && (
-                        <td style={{ textAlign: 'right' }}>
-                          <button
-                            className="btn btn-secondary btn-sm"
+                        <TableCell align="right">
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            startIcon={<EditIcon fontSize="small" />}
                             onClick={() => handleOpenEdit(item)}
-                            title="Adjust Physical Inventory"
+                            sx={{ fontSize: '0.78rem' }}
                           >
-                            <Edit size={13} />
-                            Adjust Stock
-                          </button>
-                        </td>
+                            Adjust
+                          </Button>
+                        </TableCell>
                       )}
-                    </tr>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
-      </div>
+      </Paper>
 
-      {/* ADJUST PHYSICAL STOCK MODAL */}
-      <Modal
-        isOpen={!!editingItem}
-        onClose={() => setEditingItem(null)}
-        title={`Adjust Physical Stock: ${editingItem?.product_code}`}
-        maxWidth="480px"
-      >
-        {editError && (
-          <div
-            style={{
-              background: 'rgba(239, 68, 68, 0.15)',
-              border: '1px solid rgba(239, 68, 68, 0.4)',
-              borderRadius: '6px',
-              padding: '10px 14px',
-              color: '#f87171',
-              fontSize: '0.85rem',
-              marginBottom: '16px',
-            }}
-          >
-            {editError}
-          </div>
-        )}
-
+      {/* Adjust Stock Dialog */}
+      <Dialog open={!!editingItem} onClose={() => setEditingItem(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Adjust Physical Stock</DialogTitle>
+        <Divider />
         <form onSubmit={handleSaveStock}>
-          <div
-            style={{
-              background: 'var(--bg-subtle)',
-              padding: '14px',
-              borderRadius: '8px',
-              marginBottom: '18px',
-              fontSize: '0.85rem',
-            }}
-          >
-            <div style={{ fontWeight: 600 }}>{editingItem?.product_name}</div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '4px' }}>
-              Current Reserved Units: <strong>{editingItem?.reserved_quantity}</strong>
-            </div>
-            <div style={{ color: 'var(--text-dim)', fontSize: '0.78rem', marginTop: '4px' }}>
-              * Physical stock cannot be set below currently reserved units ({editingItem?.reserved_quantity}).
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">
-              New Physical Quantity <span style={{ color: '#ef4444' }}>*</span>
-            </label>
-            <input
+          <DialogContent>
+            {editError && <Alert severity="error" sx={{ mb: 2 }}>{editError}</Alert>}
+            <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 2 }}>
+              <Typography variant="subtitle2" fontWeight={700}>{editingItem?.product_name}</Typography>
+              <Typography variant="caption" color="text.secondary">
+                Code: {editingItem?.product_code} · Reserved: <strong>{editingItem?.reserved_quantity}</strong> units
+              </Typography>
+            </Paper>
+            <TextField
+              label="New Physical Quantity"
               type="number"
               required
-              min={editingItem?.reserved_quantity || 0}
-              className="form-input"
+              fullWidth
+              inputProps={{ min: editingItem?.reserved_quantity || 0 }}
               value={physicalQty}
               onChange={(e) => setPhysicalQty(e.target.value)}
+              helperText={`Cannot be below reserved units (${editingItem?.reserved_quantity})`}
             />
-          </div>
-
-          <div className="modal-footer" style={{ margin: '-24px', marginTop: '24px' }}>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => setEditingItem(null)}
-            >
-              Cancel
-            </button>
-            <button type="submit" disabled={saving} className="btn btn-primary">
-              {saving ? 'Updating...' : 'Save Stock Quantity'}
-            </button>
-          </div>
+          </DialogContent>
+          <Divider />
+          <DialogActions>
+            <Button variant="outlined" onClick={() => setEditingItem(null)}>Cancel</Button>
+            <Button type="submit" variant="contained" disabled={saving}>
+              {saving ? <CircularProgress size={18} color="inherit" /> : 'Save'}
+            </Button>
+          </DialogActions>
         </form>
-      </Modal>
-    </div>
+      </Dialog>
+    </Box>
   );
 };

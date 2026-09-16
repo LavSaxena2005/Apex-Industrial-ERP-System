@@ -85,7 +85,7 @@ npm run dev
 | **ADMIN** | `admin@apex.com` | `Admin@123` | All operations including Confirm, Dispatch, Cancel, Inventory Adjust |
 | **Sales User** | `sales@apex.com` | `Sales@123` | Create customers, enquiries, quotations; Convert to Sales Order; View inventory |
 
-> **Tip**: Use the "Switch to Admin / Switch to Sales User" button on the top navbar for instant role-toggling without re-login.
+> **Tip**: Use the "Switch to Admin / Switch to Sales User" button at the bottom of the left sidebar for instant role-toggling without re-login.
 
 ---
 

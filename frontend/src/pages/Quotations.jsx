@@ -1,19 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { StatusBadge } from '../components/StatusBadge';
-import { Modal } from '../components/Modal';
 import {
-  Receipt,
-  Plus,
-  ArrowRight,
-  Send,
-  Check,
-  X,
-  FileCheck2,
-  AlertCircle,
-  Search,
-  Filter,
-} from 'lucide-react';
+  Box,
+  Paper,
+  Typography,
+  Button,
+  TextField,
+  InputAdornment,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  TableContainer,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Alert,
+  Grid,
+  Divider,
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import SearchIcon from '@mui/icons-material/Search';
+import SendIcon from '@mui/icons-material/Send';
+import CheckIcon from '@mui/icons-material/Check';
+import CloseIcon from '@mui/icons-material/Close';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
 
 export const Quotations = ({ initialEnquiry, onNavigateToSalesOrders }) => {
   const [quotations, setQuotations] = useState([]);
@@ -23,11 +44,9 @@ export const Quotations = ({ initialEnquiry, onNavigateToSalesOrders }) => {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
 
-  // Modals
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState(null);
 
-  // Create Form State
   const [formEnquiryId, setFormEnquiryId] = useState('');
   const [validUntil, setValidUntil] = useState('');
   const [quoteItems, setQuoteItems] = useState([]);
@@ -53,35 +72,26 @@ export const Quotations = ({ initialEnquiry, onNavigateToSalesOrders }) => {
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
-  // Handle incoming enquiry navigation from Enquiries screen
   useEffect(() => {
-    if (initialEnquiry) {
-      handleOpenCreateFromEnquiry(initialEnquiry);
-    }
+    if (initialEnquiry) handleOpenCreateFromEnquiry(initialEnquiry);
   }, [initialEnquiry]);
+
+  const next15Days = () => new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0];
 
   const handleOpenCreateFromEnquiry = (enquiry) => {
     setFormEnquiryId(enquiry.id);
-    // Set valid until to 15 days from now
-    const next15Days = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split('T')[0];
-    setValidUntil(next15Days);
-
+    setValidUntil(next15Days());
     const items = (enquiry.items || []).map((it) => ({
       product_id: it.product_id,
-      product_name: it.product?.product_name || `Product #${it.product_id}`,
+      product_name: it.product?.product_name || '',
       product_code: it.product?.product_code || '',
       quantity: it.quantity,
       unit_price: it.product?.base_price || 1000,
       discount_percent: 5,
       gst_percent: 18,
     }));
-
     setQuoteItems(items.length > 0 ? items : [{ product_id: '', quantity: 1, unit_price: 1000, discount_percent: 0, gst_percent: 18 }]);
     setErrorMessage('');
     setIsCreateOpen(true);
@@ -90,17 +100,14 @@ export const Quotations = ({ initialEnquiry, onNavigateToSalesOrders }) => {
   const handleEnquirySelectChange = (enquiryId) => {
     setFormEnquiryId(enquiryId);
     const enq = enquiries.find((e) => e.id === parseInt(enquiryId, 10));
-    if (enq && enq.items) {
-      const items = enq.items.map((it) => ({
+    if (enq?.items) {
+      setQuoteItems(enq.items.map((it) => ({
         product_id: it.product_id,
-        product_name: it.product?.product_name || `Product #${it.product_id}`,
-        product_code: it.product?.product_code || '',
         quantity: it.quantity,
         unit_price: it.product?.base_price || 1000,
         discount_percent: 5,
         gst_percent: 18,
-      }));
-      setQuoteItems(items);
+      })));
     }
   };
 
@@ -112,30 +119,15 @@ export const Quotations = ({ initialEnquiry, onNavigateToSalesOrders }) => {
     });
   };
 
-  // Compute live preview on client (backend will still authoritative recompute!)
   const computeClientTotals = () => {
-    let subtotal = 0;
-    let discountTotal = 0;
-    let taxableTotal = 0;
-    let gstTotal = 0;
-
+    let subtotal = 0, discountTotal = 0, taxableTotal = 0, gstTotal = 0;
     quoteItems.forEach((it) => {
-      const qty = parseFloat(it.quantity) || 0;
-      const price = parseFloat(it.unit_price) || 0;
-      const disc = parseFloat(it.discount_percent) || 0;
-      const gst = parseFloat(it.gst_percent) || 0;
-
-      const base = qty * price;
-      const dAmt = base * (disc / 100);
+      const base = (parseFloat(it.quantity) || 0) * (parseFloat(it.unit_price) || 0);
+      const dAmt = base * ((parseFloat(it.discount_percent) || 0) / 100);
       const tax = base - dAmt;
-      const gAmt = tax * (gst / 100);
-
-      subtotal += base;
-      discountTotal += dAmt;
-      taxableTotal += tax;
-      gstTotal += gAmt;
+      const gAmt = tax * ((parseFloat(it.gst_percent) || 0) / 100);
+      subtotal += base; discountTotal += dAmt; taxableTotal += tax; gstTotal += gAmt;
     });
-
     return {
       subtotal: subtotal.toFixed(2),
       discountTotal: discountTotal.toFixed(2),
@@ -149,9 +141,8 @@ export const Quotations = ({ initialEnquiry, onNavigateToSalesOrders }) => {
     e.preventDefault();
     setErrorMessage('');
     setSubmitting(true);
-
     try {
-      const payload = {
+      await api.createQuotation({
         enquiry_id: parseInt(formEnquiryId, 10),
         valid_until: validUntil,
         items: quoteItems.map((it) => ({
@@ -161,12 +152,10 @@ export const Quotations = ({ initialEnquiry, onNavigateToSalesOrders }) => {
           discount_percent: parseFloat(it.discount_percent || 0),
           gst_percent: parseFloat(it.gst_percent || 18),
         })),
-      };
-
-      await api.createQuotation(payload);
+      });
       setIsCreateOpen(false);
       fetchData();
-      setSuccessMessage('Quotation created successfully with authoritative server-computed taxes!');
+      setSuccessMessage('Quotation created with server-computed taxes!');
       setTimeout(() => setSuccessMessage(''), 4000);
     } catch (err) {
       setErrorMessage(err.message || 'Failed to create quotation');
@@ -179,9 +168,7 @@ export const Quotations = ({ initialEnquiry, onNavigateToSalesOrders }) => {
     try {
       await api.updateQuotationStatus(id, status);
       fetchData();
-      if (selectedQuote && selectedQuote.id === id) {
-        setSelectedQuote((prev) => ({ ...prev, status }));
-      }
+      if (selectedQuote?.id === id) setSelectedQuote((p) => ({ ...p, status }));
     } catch (err) {
       alert(err.message || 'Failed to update status');
     }
@@ -191,627 +178,376 @@ export const Quotations = ({ initialEnquiry, onNavigateToSalesOrders }) => {
     try {
       const res = await api.convertToSalesOrder(quote.id);
       fetchData();
-      alert(`Success! Quotation ${quote.quotation_number} converted to Sales Order ${res.data.order_number}.`);
-      if (onNavigateToSalesOrders) {
-        onNavigateToSalesOrders();
-      }
+      alert(`Quotation ${quote.quotation_number} converted to ${res.data.order_number}.`);
+      if (onNavigateToSalesOrders) onNavigateToSalesOrders();
     } catch (err) {
-      alert(err.message || 'Failed to convert quotation to Sales Order.');
+      alert(err.message || 'Failed to convert to Sales Order.');
     }
   };
 
   const clientTotals = computeClientTotals();
 
-  const filteredQuotations = quotations.filter((q) => {
-    const matchesSearch =
+  const filtered = quotations.filter((q) => {
+    const matchSearch =
       q.quotation_number.toLowerCase().includes(search.toLowerCase()) ||
       q.customer?.company_name.toLowerCase().includes(search.toLowerCase()) ||
       q.enquiry?.enquiry_number.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = filterStatus === 'ALL' || q.status === filterStatus;
-    return matchesSearch && matchesStatus;
+    return matchSearch && (filterStatus === 'ALL' || q.status === filterStatus);
   });
 
   return (
-    <div className="card">
-      <div className="card-header">
-        <div>
-          <h2 className="card-title">
-            <Receipt size={22} color="var(--primary)" />
-            Commercial Quotations
-          </h2>
-          <p className="card-desc">
-            Itemized pricing, discount structures, GST calculations, and order conversion.
-          </p>
-        </div>
-
-        <button
-          id="btn-new-quotation"
-          className="btn btn-primary"
-          onClick={() => {
-            const next15Days = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000)
-              .toISOString()
-              .split('T')[0];
-            setValidUntil(next15Days);
-            setFormEnquiryId('');
-            setQuoteItems([
-              { product_id: '', quantity: 1, unit_price: 1000, discount_percent: 5, gst_percent: 18 },
-            ]);
-            setErrorMessage('');
-            setIsCreateOpen(true);
-          }}
-        >
-          <Plus size={18} />
-          Create Quotation
-        </button>
-      </div>
-
+    <Box>
       {successMessage && (
-        <div
-          style={{
-            background: 'var(--success-bg)',
-            border: '1px solid var(--success-border)',
-            borderRadius: '8px',
-            padding: '12px 16px',
-            color: '#34d399',
-            fontSize: '0.85rem',
-            marginBottom: '16px',
-          }}
-        >
+        <Alert severity="success" sx={{ mb: 2, borderRadius: 2 }} onClose={() => setSuccessMessage('')}>
           {successMessage}
-        </div>
+        </Alert>
       )}
 
-      {/* Filters Bar */}
-      <div
-        style={{
-          display: 'flex',
-          gap: '12px',
-          marginBottom: '20px',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-        }}
-      >
-        <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
-          <Search
-            size={16}
-            style={{
-              position: 'absolute',
-              left: '12px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: 'var(--text-dim)',
+      <Paper variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden', bgcolor: '#fff' }}>
+        {/* Header */}
+        <Box sx={{ px: 3, py: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+          <Box>
+            <Typography variant="h6" fontWeight={700}>Commercial Quotations</Typography>
+            <Typography variant="caption" color="text.secondary">
+              Itemized pricing, discount, GST calculation, and order conversion
+            </Typography>
+          </Box>
+          <Button
+            id="btn-new-quotation"
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => {
+              setValidUntil(next15Days());
+              setFormEnquiryId('');
+              setQuoteItems([{ product_id: '', quantity: 1, unit_price: 1000, discount_percent: 5, gst_percent: 18 }]);
+              setErrorMessage('');
+              setIsCreateOpen(true);
             }}
-          />
-          <input
-            type="text"
-            className="form-input"
-            placeholder="Search by quote #, enquiry #, or customer..."
-            style={{ paddingLeft: '36px' }}
+          >
+            Create Quotation
+          </Button>
+        </Box>
+
+        {/* Filters */}
+        <Box sx={{ px: 3, py: 2, display: 'flex', gap: 2, flexWrap: 'wrap', borderBottom: '1px solid', borderColor: 'divider' }}>
+          <TextField
+            size="small"
+            placeholder="Search by quote #, enquiry #, or customer…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" sx={{ color: 'text.secondary' }} /></InputAdornment> }}
+            sx={{ flex: 1, minWidth: 260 }}
           />
-        </div>
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <InputLabel>Status</InputLabel>
+            <Select label="Status" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+              <MenuItem value="ALL">All Statuses</MenuItem>
+              <MenuItem value="DRAFT">Draft</MenuItem>
+              <MenuItem value="SENT">Sent</MenuItem>
+              <MenuItem value="ACCEPTED">Accepted</MenuItem>
+              <MenuItem value="REJECTED">Rejected</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Filter size={16} color="var(--text-dim)" />
-          <select
-            className="form-select"
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            style={{ width: '160px' }}
-          >
-            <option value="ALL">All Statuses</option>
-            <option value="DRAFT">DRAFT</option>
-            <option value="SENT">SENT</option>
-            <option value="ACCEPTED">ACCEPTED</option>
-            <option value="REJECTED">REJECTED</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Quotations Table */}
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-          Loading quotations...
-        </div>
-      ) : filteredQuotations.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-dim)' }}>
-          No quotations found matching your criteria.
-        </div>
-      ) : (
-        <div className="table-container">
-          <table className="erp-table">
-            <thead>
-              <tr>
-                <th>Quotation #</th>
-                <th>Enquiry Ref</th>
-                <th>Customer</th>
-                <th>Status</th>
-                <th>Subtotal</th>
-                <th>Discount</th>
-                <th>GST (18%)</th>
-                <th>Grand Total</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredQuotations.map((q) => (
-                <tr key={q.id}>
-                  <td className="font-mono" style={{ fontWeight: 700, color: 'var(--primary)' }}>
-                    {q.quotation_number}
-                  </td>
-                  <td className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--text-dim)' }}>
-                    {q.enquiry?.enquiry_number}
-                  </td>
-                  <td>
-                    <div style={{ fontWeight: 600 }}>{q.customer?.company_name}</div>
-                  </td>
-                  <td>
-                    <StatusBadge status={q.status} />
-                  </td>
-                  <td className="font-mono">₹{Number(q.subtotal).toLocaleString('en-IN')}</td>
-                  <td className="font-mono" style={{ color: '#f87171' }}>
-                    -₹{Number(q.total_discount).toLocaleString('en-IN')}
-                  </td>
-                  <td className="font-mono">₹{Number(q.total_gst).toLocaleString('en-IN')}</td>
-                  <td className="font-mono" style={{ fontWeight: 700, color: '#34d399' }}>
-                    ₹{Number(q.grand_total).toLocaleString('en-IN')}
-                  </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'inline-flex', gap: '6px' }}>
-                      <button
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => setSelectedQuote(q)}
-                      >
-                        Breakdown
-                      </button>
-
-                      {q.status === 'DRAFT' && (
-                        <button
-                          className="btn btn-secondary btn-sm"
-                          onClick={() => handleStatusUpdate(q.id, 'SENT')}
-                          title="Send to Customer"
-                        >
-                          <Send size={13} />
-                          Send
-                        </button>
-                      )}
-
-                      {q.status === 'SENT' && (
-                        <>
-                          <button
-                            className="btn btn-success btn-sm"
-                            onClick={() => handleStatusUpdate(q.id, 'ACCEPTED')}
-                            title="Accept Quotation"
+        {/* Table */}
+        {loading ? (
+          <Box sx={{ py: 6, display: 'flex', justifyContent: 'center' }}><CircularProgress size={32} /></Box>
+        ) : filtered.length === 0 ? (
+          <Box sx={{ py: 6, textAlign: 'center' }}>
+            <RequestQuoteIcon sx={{ fontSize: 40, color: 'text.disabled', mb: 1 }} />
+            <Typography color="text.secondary">No quotations found.</Typography>
+          </Box>
+        ) : (
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Quotation #</TableCell>
+                  <TableCell>Enquiry Ref</TableCell>
+                  <TableCell>Customer</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell align="right">Subtotal</TableCell>
+                  <TableCell align="right">Discount</TableCell>
+                  <TableCell align="right">GST</TableCell>
+                  <TableCell align="right">Grand Total</TableCell>
+                  <TableCell align="right">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filtered.map((q) => (
+                  <TableRow key={q.id}>
+                    <TableCell>
+                      <Typography variant="body2" fontWeight={700} color="primary.main" fontFamily="monospace">{q.quotation_number}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="caption" color="text.secondary" fontFamily="monospace">{q.enquiry?.enquiry_number}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" fontWeight={600}>{q.customer?.company_name}</Typography>
+                    </TableCell>
+                    <TableCell><StatusBadge status={q.status} /></TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2" fontFamily="monospace">₹{Number(q.subtotal).toLocaleString('en-IN')}</Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2" fontFamily="monospace" color="error.main">-₹{Number(q.total_discount).toLocaleString('en-IN')}</Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2" fontFamily="monospace">₹{Number(q.total_gst).toLocaleString('en-IN')}</Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2" fontWeight={700} fontFamily="monospace" color="primary.main">
+                        ₹{Number(q.grand_total).toLocaleString('en-IN')}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Box sx={{ display: 'flex', gap: 0.75, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                        <Button size="small" variant="outlined" onClick={() => setSelectedQuote(q)} sx={{ fontSize: '0.75rem' }}>
+                          Details
+                        </Button>
+                        {q.status === 'DRAFT' && (
+                          <Button size="small" variant="outlined" startIcon={<SendIcon fontSize="small" />} onClick={() => handleStatusUpdate(q.id, 'SENT')} sx={{ fontSize: '0.75rem' }}>
+                            Send
+                          </Button>
+                        )}
+                        {q.status === 'SENT' && (
+                          <>
+                            <Button size="small" variant="contained" color="success" startIcon={<CheckIcon fontSize="small" />} onClick={() => handleStatusUpdate(q.id, 'ACCEPTED')} sx={{ fontSize: '0.75rem' }}>
+                              Accept
+                            </Button>
+                            <Button size="small" variant="outlined" color="error" startIcon={<CloseIcon fontSize="small" />} onClick={() => handleStatusUpdate(q.id, 'REJECTED')} sx={{ fontSize: '0.75rem' }}>
+                              Reject
+                            </Button>
+                          </>
+                        )}
+                        {q.status === 'ACCEPTED' && !q.sales_order && (
+                          <Button
+                            id={`btn-convert-${q.id}`}
+                            size="small"
+                            variant="contained"
+                            color="success"
+                            startIcon={<SwapHorizIcon fontSize="small" />}
+                            onClick={() => handleConvertToOrder(q)}
+                            sx={{ fontSize: '0.75rem' }}
                           >
-                            <Check size={13} />
-                            Accept
-                          </button>
-                          <button
-                            className="btn btn-danger btn-sm"
-                            onClick={() => handleStatusUpdate(q.id, 'REJECTED')}
-                            title="Reject Quotation"
-                          >
-                            <X size={13} />
-                            Reject
-                          </button>
-                        </>
-                      )}
-
-                      {q.status === 'ACCEPTED' && !q.sales_order && (
-                        <button
-                          id={`btn-convert-${q.id}`}
-                          className="btn btn-primary btn-sm"
-                          onClick={() => handleConvertToOrder(q)}
-                          title="Convert ACCEPTED Quotation to Sales Order"
-                          style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
-                        >
-                          <FileCheck2 size={14} />
-                          Convert to SO
-                        </button>
-                      )}
-
-                      {q.sales_order && (
-                        <span
-                          className="font-mono"
-                          style={{
-                            fontSize: '0.75rem',
-                            color: 'var(--primary)',
-                            padding: '4px 8px',
-                            background: 'rgba(59, 130, 246, 0.1)',
-                            borderRadius: '4px',
-                            fontWeight: 600,
-                          }}
-                        >
-                          {q.sales_order.order_number}
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* CREATE QUOTATION MODAL */}
-      <Modal
-        isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        title="Create Commercial Quotation"
-        maxWidth="820px"
-      >
-        {errorMessage && (
-          <div
-            style={{
-              background: 'rgba(239, 68, 68, 0.15)',
-              border: '1px solid rgba(239, 68, 68, 0.4)',
-              borderRadius: '6px',
-              padding: '10px 14px',
-              color: '#f87171',
-              fontSize: '0.85rem',
-              marginBottom: '16px',
-            }}
-          >
-            {errorMessage}
-          </div>
-        )}
-
-        <form onSubmit={handleCreateQuotation}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-            <div className="form-group">
-              <label className="form-label">
-                Select Customer Enquiry <span style={{ color: '#ef4444' }}>*</span>
-              </label>
-              <select
-                required
-                className="form-select"
-                value={formEnquiryId}
-                onChange={(e) => handleEnquirySelectChange(e.target.value)}
-              >
-                <option value="">Select Enquiry...</option>
-                {enquiries.map((enq) => (
-                  <option key={enq.id} value={enq.id}>
-                    {enq.enquiry_number} - {enq.customer?.company_name} ({enq.items?.length || 0} items)
-                  </option>
+                            Convert to SO
+                          </Button>
+                        )}
+                        {q.sales_order && (
+                          <Chip label={q.sales_order.order_number} size="small" color="primary" variant="outlined" sx={{ height: 24, fontFamily: 'monospace', fontWeight: 700, fontSize: '0.72rem' }} />
+                        )}
+                      </Box>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">
-                Quotation Validity Date <span style={{ color: '#ef4444' }}>*</span>
-              </label>
-              <input
-                type="date"
-                required
-                className="form-input"
-                value={validUntil}
-                onChange={(e) => setValidUntil(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* Pricing Items Grid */}
-          <div style={{ marginTop: '16px' }}>
-            <h4 style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '10px' }}>
-              Quotation Pricing & Tax Rates
-            </h4>
-
-            <div className="table-container" style={{ maxHeight: '240px' }}>
-              <table className="erp-table">
-                <thead>
-                  <tr>
-                    <th>Product</th>
-                    <th>Qty</th>
-                    <th>Unit Price (₹)</th>
-                    <th>Discount %</th>
-                    <th>GST %</th>
-                    <th>Line Est.</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {quoteItems.map((it, idx) => {
-                    const base = (it.quantity || 0) * (it.unit_price || 0);
-                    const dAmt = base * ((it.discount_percent || 0) / 100);
-                    const tax = base - dAmt;
-                    const gst = tax * ((it.gst_percent || 18) / 100);
-                    const lineEst = tax + gst;
-
-                    return (
-                      <tr key={idx}>
-                        <td>
-                          <select
-                            required
-                            className="form-select"
-                            style={{ minWidth: '180px' }}
-                            value={it.product_id}
-                            onChange={(e) => handleItemFieldChange(idx, 'product_id', e.target.value)}
-                          >
-                            <option value="">Choose product...</option>
-                            {products.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.product_code} - {p.product_name}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td>
-                          <input
-                            type="number"
-                            required
-                            min={1}
-                            className="form-input"
-                            style={{ width: '80px' }}
-                            value={it.quantity}
-                            onChange={(e) => handleItemFieldChange(idx, 'quantity', e.target.value)}
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="number"
-                            required
-                            min={0}
-                            step="0.01"
-                            className="form-input"
-                            style={{ width: '110px' }}
-                            value={it.unit_price}
-                            onChange={(e) => handleItemFieldChange(idx, 'unit_price', e.target.value)}
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="number"
-                            min={0}
-                            max={100}
-                            step="0.1"
-                            className="form-input"
-                            style={{ width: '80px' }}
-                            value={it.discount_percent}
-                            onChange={(e) => handleItemFieldChange(idx, 'discount_percent', e.target.value)}
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="number"
-                            min={0}
-                            step="0.1"
-                            className="form-input"
-                            style={{ width: '80px' }}
-                            value={it.gst_percent}
-                            onChange={(e) => handleItemFieldChange(idx, 'gst_percent', e.target.value)}
-                          />
-                        </td>
-                        <td className="font-mono" style={{ fontWeight: 600, color: '#34d399' }}>
-                          ₹{lineEst.toFixed(2)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Calculations Summary Card */}
-            <div
-              style={{
-                marginTop: '16px',
-                background: 'var(--bg-subtle)',
-                padding: '16px',
-                borderRadius: '8px',
-                display: 'grid',
-                gridTemplateColumns: 'repeat(5, 1fr)',
-                gap: '12px',
-                textAlign: 'center',
-              }}
-            >
-              <div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>SUBTOTAL</div>
-                <div className="font-mono" style={{ fontWeight: 600 }}>₹{clientTotals.subtotal}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>TOTAL DISCOUNT</div>
-                <div className="font-mono" style={{ fontWeight: 600, color: '#f87171' }}>-₹{clientTotals.discountTotal}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>TAXABLE VALUE</div>
-                <div className="font-mono" style={{ fontWeight: 600 }}>₹{clientTotals.taxableTotal}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>TOTAL GST</div>
-                <div className="font-mono" style={{ fontWeight: 600 }}>₹{clientTotals.gstTotal}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>GRAND TOTAL</div>
-                <div className="font-mono" style={{ fontWeight: 800, color: '#34d399', fontSize: '1.1rem' }}>
-                  ₹{clientTotals.grandTotal}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="modal-footer" style={{ margin: '-24px', marginTop: '24px' }}>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => setIsCreateOpen(false)}
-            >
-              Cancel
-            </button>
-            <button
-              id="btn-submit-quotation"
-              type="submit"
-              disabled={submitting}
-              className="btn btn-primary"
-            >
-              {submitting ? 'Calculating on Backend...' : 'Generate Quotation'}
-            </button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* QUOTATION BREAKDOWN DETAILS MODAL */}
-      <Modal
-        isOpen={!!selectedQuote}
-        onClose={() => setSelectedQuote(null)}
-        title={`Quotation Pricing Breakdown: ${selectedQuote?.quotation_number}`}
-        maxWidth="840px"
-      >
-        {selectedQuote && (
-          <div>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '16px',
-                background: 'var(--bg-subtle)',
-                padding: '16px',
-                borderRadius: '8px',
-                marginBottom: '20px',
-              }}
-            >
-              <div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>CLIENT COMPANY</div>
-                <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>{selectedQuote.customer?.company_name}</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  Ref Enquiry: {selectedQuote.enquiry?.enquiry_number}
-                </div>
-              </div>
-
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>STATUS</div>
-                <div style={{ marginTop: '4px' }}>
-                  <StatusBadge status={selectedQuote.status} />
-                </div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '6px' }}>
-                  Valid Until: {new Date(selectedQuote.valid_until).toLocaleDateString()}
-                </div>
-              </div>
-            </div>
-
-            <h4 style={{ fontSize: '0.9rem', marginBottom: '10px' }}>
-              Itemized Tax & Discount Calculation Table
-            </h4>
-
-            <div className="table-container" style={{ marginBottom: '20px' }}>
-              <table className="erp-table">
-                <thead>
-                  <tr>
-                    <th>Product</th>
-                    <th>Qty</th>
-                    <th>Price</th>
-                    <th>Base Amount</th>
-                    <th>Disc %</th>
-                    <th>Taxable</th>
-                    <th>GST</th>
-                    <th>Line Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedQuote.items?.map((it) => {
-                    const baseAmt = Number(it.quantity) * Number(it.unit_price);
-                    const discAmt = baseAmt * (Number(it.discount_percent) / 100);
-                    const taxable = baseAmt - discAmt;
-                    const gstAmt = taxable * (Number(it.gst_percent) / 100);
-
-                    return (
-                      <tr key={it.id}>
-                        <td>
-                          <span className="font-mono" style={{ fontWeight: 600, color: 'var(--primary)' }}>
-                            {it.product?.product_code}
-                          </span>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                            {it.product?.product_name}
-                          </div>
-                        </td>
-                        <td className="font-mono">{it.quantity}</td>
-                        <td className="font-mono">₹{Number(it.unit_price).toLocaleString('en-IN')}</td>
-                        <td className="font-mono">₹{baseAmt.toLocaleString('en-IN')}</td>
-                        <td className="font-mono" style={{ color: '#f87171' }}>{Number(it.discount_percent)}%</td>
-                        <td className="font-mono">₹{taxable.toLocaleString('en-IN')}</td>
-                        <td className="font-mono">{Number(it.gst_percent)}% (₹{gstAmt.toFixed(2)})</td>
-                        <td className="font-mono" style={{ fontWeight: 700, color: '#34d399' }}>
-                          ₹{Number(it.line_amount).toLocaleString('en-IN')}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Authoritative Totals Breakdown */}
-            <div
-              style={{
-                background: '#0d1424',
-                border: '1px solid var(--border-color)',
-                borderRadius: '8px',
-                padding: '16px 20px',
-                display: 'flex',
-                justifyContent: 'flex-end',
-              }}
-            >
-              <div style={{ width: '280px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.85rem' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Subtotal:</span>
-                  <span className="font-mono">₹{Number(selectedQuote.subtotal).toLocaleString('en-IN')}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.85rem' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Total Discount:</span>
-                  <span className="font-mono" style={{ color: '#f87171' }}>
-                    -₹{Number(selectedQuote.total_discount).toLocaleString('en-IN')}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.85rem' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Taxable Amount:</span>
-                  <span className="font-mono">₹{Number(selectedQuote.taxable_amount).toLocaleString('en-IN')}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.85rem' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>GST:</span>
-                  <span className="font-mono">₹{Number(selectedQuote.total_gst).toLocaleString('en-IN')}</span>
-                </div>
-                <div
-                  style={{
-                    borderTop: '1px solid var(--border-color)',
-                    paddingTop: '8px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    fontSize: '1.1rem',
-                    fontWeight: 800,
-                    color: '#34d399',
-                  }}
-                >
-                  <span>Grand Total:</span>
-                  <span className="font-mono">₹{Number(selectedQuote.grand_total).toLocaleString('en-IN')}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="modal-footer" style={{ margin: '-24px', marginTop: '20px' }}>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setSelectedQuote(null)}
-              >
-                Close
-              </button>
-
-              {selectedQuote.status === 'ACCEPTED' && !selectedQuote.sales_order && (
-                <button
-                  className="btn btn-primary"
-                  onClick={() => {
-                    const q = selectedQuote;
-                    setSelectedQuote(null);
-                    handleConvertToOrder(q);
-                  }}
-                >
-                  Convert to Sales Order
-                </button>
-              )}
-            </div>
-          </div>
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
-      </Modal>
-    </div>
+      </Paper>
+
+      {/* CREATE QUOTATION DIALOG */}
+      <Dialog open={isCreateOpen} onClose={() => setIsCreateOpen(false)} maxWidth="lg" fullWidth>
+        <DialogTitle>Create Commercial Quotation</DialogTitle>
+        <Divider />
+        <form onSubmit={handleCreateQuotation}>
+          <DialogContent>
+            {errorMessage && <Alert severity="error" sx={{ mb: 2 }}>{errorMessage}</Alert>}
+            <Grid container spacing={2} sx={{ mb: 2 }}>
+              <Grid item xs={12} sm={8}>
+                <FormControl fullWidth size="small" required>
+                  <InputLabel>Select Enquiry *</InputLabel>
+                  <Select label="Select Enquiry *" value={formEnquiryId} onChange={(e) => handleEnquirySelectChange(e.target.value)}>
+                    <MenuItem value=""><em>Choose enquiry…</em></MenuItem>
+                    {enquiries.map((enq) => (
+                      <MenuItem key={enq.id} value={enq.id}>
+                        {enq.enquiry_number} – {enq.customer?.company_name} ({enq.items?.length || 0} items)
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <TextField type="date" label="Valid Until *" required fullWidth size="small" InputLabelProps={{ shrink: true }} value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
+              </Grid>
+            </Grid>
+
+            {/* Pricing table */}
+            <Typography variant="subtitle2" fontWeight={700} mb={1}>Pricing &amp; Tax Rates</Typography>
+            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, maxHeight: 280, overflow: 'auto' }}>
+              <Table size="small" stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Product</TableCell>
+                    <TableCell>Qty</TableCell>
+                    <TableCell>Unit Price (₹)</TableCell>
+                    <TableCell>Discount %</TableCell>
+                    <TableCell>GST %</TableCell>
+                    <TableCell align="right">Line Est.</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {quoteItems.map((it, idx) => {
+                    const base = (parseFloat(it.quantity) || 0) * (parseFloat(it.unit_price) || 0);
+                    const d = base * ((parseFloat(it.discount_percent) || 0) / 100);
+                    const tax = base - d;
+                    const gst = tax * ((parseFloat(it.gst_percent) || 0) / 100);
+                    const lineEst = tax + gst;
+                    return (
+                      <TableRow key={idx}>
+                        <TableCell>
+                          <Select size="small" required value={it.product_id} onChange={(e) => handleItemFieldChange(idx, 'product_id', e.target.value)} sx={{ minWidth: 200, fontSize: '0.8rem' }}>
+                            <MenuItem value=""><em>Choose product…</em></MenuItem>
+                            {products.map((p) => <MenuItem key={p.id} value={p.id}>{p.product_code} – {p.product_name}</MenuItem>)}
+                          </Select>
+                        </TableCell>
+                        <TableCell><TextField size="small" type="number" inputProps={{ min: 1 }} value={it.quantity} onChange={(e) => handleItemFieldChange(idx, 'quantity', e.target.value)} sx={{ width: 72 }} /></TableCell>
+                        <TableCell><TextField size="small" type="number" inputProps={{ min: 0, step: '0.01' }} value={it.unit_price} onChange={(e) => handleItemFieldChange(idx, 'unit_price', e.target.value)} sx={{ width: 110 }} /></TableCell>
+                        <TableCell><TextField size="small" type="number" inputProps={{ min: 0, max: 100, step: '0.1' }} value={it.discount_percent} onChange={(e) => handleItemFieldChange(idx, 'discount_percent', e.target.value)} sx={{ width: 80 }} /></TableCell>
+                        <TableCell><TextField size="small" type="number" inputProps={{ min: 0, step: '0.1' }} value={it.gst_percent} onChange={(e) => handleItemFieldChange(idx, 'gst_percent', e.target.value)} sx={{ width: 80 }} /></TableCell>
+                        <TableCell align="right">
+                          <Typography variant="body2" fontWeight={700} color="primary.main" fontFamily="monospace">₹{lineEst.toFixed(2)}</Typography>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            {/* Totals summary */}
+            <Paper variant="outlined" sx={{ mt: 2, p: 2, borderRadius: 2, bgcolor: '#f9fafb' }}>
+              <Grid container spacing={1} justifyContent="center" textAlign="center">
+                {[
+                  { label: 'Subtotal', value: `₹${clientTotals.subtotal}`, color: 'text.primary' },
+                  { label: 'Total Discount', value: `-₹${clientTotals.discountTotal}`, color: 'error.main' },
+                  { label: 'Taxable Value', value: `₹${clientTotals.taxableTotal}`, color: 'text.primary' },
+                  { label: 'Total GST', value: `₹${clientTotals.gstTotal}`, color: 'text.primary' },
+                  { label: 'Grand Total', value: `₹${clientTotals.grandTotal}`, color: 'primary.main', bold: true },
+                ].map((s) => (
+                  <Grid item xs key={s.label}>
+                    <Typography variant="caption" color="text.secondary" textTransform="uppercase" letterSpacing="0.06em" display="block">{s.label}</Typography>
+                    <Typography variant={s.bold ? 'subtitle1' : 'body2'} fontWeight={s.bold ? 800 : 600} color={s.color} fontFamily="monospace">{s.value}</Typography>
+                  </Grid>
+                ))}
+              </Grid>
+            </Paper>
+          </DialogContent>
+          <Divider />
+          <DialogActions>
+            <Button variant="outlined" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+            <Button id="btn-submit-quotation" type="submit" variant="contained" disabled={submitting}>
+              {submitting ? <CircularProgress size={18} color="inherit" /> : 'Generate Quotation'}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+
+      {/* QUOTATION BREAKDOWN DIALOG */}
+      <Dialog open={!!selectedQuote} onClose={() => setSelectedQuote(null)} maxWidth="md" fullWidth>
+        <DialogTitle>Pricing Breakdown — {selectedQuote?.quotation_number}</DialogTitle>
+        <Divider />
+        <DialogContent>
+          {selectedQuote && (
+            <Box>
+              <Grid container spacing={2} sx={{ mb: 2 }}>
+                <Grid item xs={12} sm={6}>
+                  <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                    <Typography variant="caption" color="text.secondary" textTransform="uppercase" letterSpacing="0.06em" fontWeight={700}>Client</Typography>
+                    <Typography variant="subtitle1" fontWeight={700} mt={0.5}>{selectedQuote.customer?.company_name}</Typography>
+                    <Typography variant="caption" color="text.secondary">Ref Enquiry: {selectedQuote.enquiry?.enquiry_number}</Typography>
+                  </Paper>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                    <Typography variant="caption" color="text.secondary" textTransform="uppercase" letterSpacing="0.06em" fontWeight={700}>Status</Typography>
+                    <Box mt={0.5} mb={0.5}><StatusBadge status={selectedQuote.status} /></Box>
+                    <Typography variant="caption" color="text.secondary">Valid Until: {new Date(selectedQuote.valid_until).toLocaleDateString()}</Typography>
+                  </Paper>
+                </Grid>
+              </Grid>
+
+              <Typography variant="subtitle2" fontWeight={700} mb={1}>Itemized Tax &amp; Discount Calculation</Typography>
+              <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, mb: 2 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Product</TableCell>
+                      <TableCell align="right">Qty</TableCell>
+                      <TableCell align="right">Price</TableCell>
+                      <TableCell align="right">Base Amount</TableCell>
+                      <TableCell align="right">Disc %</TableCell>
+                      <TableCell align="right">Taxable</TableCell>
+                      <TableCell align="right">GST</TableCell>
+                      <TableCell align="right">Line Amount</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {selectedQuote.items?.map((it) => {
+                      const baseAmt = Number(it.quantity) * Number(it.unit_price);
+                      const discAmt = baseAmt * (Number(it.discount_percent) / 100);
+                      const taxable = baseAmt - discAmt;
+                      const gstAmt = taxable * (Number(it.gst_percent) / 100);
+                      return (
+                        <TableRow key={it.id}>
+                          <TableCell>
+                            <Typography variant="body2" fontWeight={700} color="primary.main" fontFamily="monospace">{it.product?.product_code}</Typography>
+                            <Typography variant="caption" color="text.secondary">{it.product?.product_name}</Typography>
+                          </TableCell>
+                          <TableCell align="right"><Typography variant="body2" fontFamily="monospace">{it.quantity}</Typography></TableCell>
+                          <TableCell align="right"><Typography variant="body2" fontFamily="monospace">₹{Number(it.unit_price).toLocaleString('en-IN')}</Typography></TableCell>
+                          <TableCell align="right"><Typography variant="body2" fontFamily="monospace">₹{baseAmt.toLocaleString('en-IN')}</Typography></TableCell>
+                          <TableCell align="right"><Typography variant="body2" color="error.main" fontFamily="monospace">{Number(it.discount_percent)}%</Typography></TableCell>
+                          <TableCell align="right"><Typography variant="body2" fontFamily="monospace">₹{taxable.toLocaleString('en-IN')}</Typography></TableCell>
+                          <TableCell align="right"><Typography variant="body2" fontFamily="monospace">{Number(it.gst_percent)}%</Typography></TableCell>
+                          <TableCell align="right"><Typography variant="body2" fontWeight={700} color="primary.main" fontFamily="monospace">₹{Number(it.line_amount).toLocaleString('en-IN')}</Typography></TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              {/* Totals */}
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, minWidth: 280 }}>
+                  {[
+                    { label: 'Subtotal', value: `₹${Number(selectedQuote.subtotal).toLocaleString('en-IN')}` },
+                    { label: 'Total Discount', value: `-₹${Number(selectedQuote.total_discount).toLocaleString('en-IN')}`, color: 'error.main' },
+                    { label: 'Taxable Amount', value: `₹${Number(selectedQuote.taxable_amount).toLocaleString('en-IN')}` },
+                    { label: 'GST', value: `₹${Number(selectedQuote.total_gst).toLocaleString('en-IN')}` },
+                  ].map((row) => (
+                    <Box key={row.label} sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.75 }}>
+                      <Typography variant="body2" color="text.secondary">{row.label}</Typography>
+                      <Typography variant="body2" fontFamily="monospace" color={row.color || 'text.primary'}>{row.value}</Typography>
+                    </Box>
+                  ))}
+                  <Divider sx={{ my: 1 }} />
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Typography variant="subtitle2" fontWeight={700}>Grand Total</Typography>
+                    <Typography variant="subtitle1" fontWeight={800} color="primary.main" fontFamily="monospace">₹{Number(selectedQuote.grand_total).toLocaleString('en-IN')}</Typography>
+                  </Box>
+                </Paper>
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        <Divider />
+        <DialogActions>
+          <Button variant="outlined" onClick={() => setSelectedQuote(null)}>Close</Button>
+          {selectedQuote?.status === 'ACCEPTED' && !selectedQuote?.sales_order && (
+            <Button
+              variant="contained"
+              color="success"
+              startIcon={<SwapHorizIcon />}
+              onClick={() => { const q = selectedQuote; setSelectedQuote(null); handleConvertToOrder(q); }}
+            >
+              Convert to Sales Order
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 };
