@@ -1,0 +1,9 @@
+{
+  "name": "apex-erp-system",
+  "version": "1.0.0",
+  "description": "Unified build script for Render",
+  "scripts": {
+    "build": "npm install --prefix backend && npm install --prefix frontend && npm run build --prefix frontend && npm run build --prefix backend",
+    "start": "npm start --prefix backend"
+  }
+}
